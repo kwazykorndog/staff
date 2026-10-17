@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Kwazy Korndog Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="kk.css">
+<style>
+  .wrap{max-width:1040px}
+  .top{max-width:1040px}
+  .tabs{display:flex;gap:6px;margin-top:12px;overflow-x:auto;padding-bottom:2px}
+  .tabs a{font-weight:800;font-size:14px;text-decoration:none;color:var(--muted);padding:9px 14px;border-radius:12px;border:1.5px solid var(--line);background:var(--card);white-space:nowrap}
+  .tabs a.on{background:var(--ink);border-color:var(--ink);color:#fff}
+  .bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:14px}
+  .bar .wk{font-weight:800;font-size:16px;margin:0 4px}
+  .sbtn{font:inherit;font-size:13.5px;font-weight:800;border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;padding:8px 12px;cursor:pointer}
+  .sbtn.pri{background:var(--pink);border-color:var(--pink);color:#fff}
+  .sbtn.danger{color:var(--bad)}
+  .grow{flex:1}
+
+  /* roster grid */
+  .rg{display:grid;grid-template-columns:96px repeat(7,minmax(0,1fr));gap:4px;margin-top:12px;font-size:12.5px}
+  .rg .h{text-align:center;color:var(--muted);font-weight:800;padding:4px 0;line-height:1.25}
+  .rg .h.today{color:var(--pink-d)}
+  .rg .n{font-weight:800;padding:8px 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rg .n small{display:block;color:var(--muted);font-weight:600;font-size:11px}
+  .cell{border:1.5px dashed var(--line);border-radius:9px;min-height:38px;display:flex;flex-direction:column;gap:3px;padding:3px;cursor:pointer;background:#fff}
+  .cell:hover{border-color:#e8bfd0}
+  .cell.sel{outline:2.5px solid var(--pink);outline-offset:1px}
+  .cell .plus{margin:auto;color:#d9c4cd;font-weight:800}
+  .chipS{border-radius:7px;padding:5px 3px;text-align:center;font-weight:800;font-size:12px;font-variant-numeric:tabular-nums;line-height:1.15}
+  .chipS small{display:block;font-weight:700;font-size:10.5px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .chipSb{border:1.5px dashed #cdb9c2;color:var(--muted);border-radius:7px;padding:4px 3px;text-align:center;font-size:11px;font-weight:800}
+  .ban{border-radius:8px;padding:5px 9px;font-weight:800;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .days{display:none;gap:6px;overflow-x:auto;margin-top:12px}
+  .days button{font:inherit;font-weight:800;font-size:13px;border:1.5px solid var(--line);background:var(--card);border-radius:12px;padding:8px 10px;color:var(--muted);white-space:nowrap}
+  .days button.on{background:var(--pink);border-color:var(--pink);color:#fff}
+  @media (max-width:700px){
+    .rg{grid-template-columns:110px minmax(0,1fr)}
+    .rg .wide{display:none}
+    .days{display:flex}
+  }
+
+  .ed{margin-top:16px}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+  .chip{font:inherit;font-size:13.5px;font-weight:800;border-radius:99px;padding:8px 13px;border:2px solid transparent;cursor:pointer}
+  .chip.on{border-color:var(--ink)}
+  .chip.plain{background:var(--card);border-color:var(--line);color:var(--muted)}
+  .chip.plain.on{border-color:var(--ink);color:var(--ink)}
+  .times{display:flex;gap:8px;align-items:center;margin-top:8px}
+  .times input{max-width:110px;text-align:center;font-weight:800}
+
+  /* lists */
+  .row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-top:1px solid var(--line);cursor:pointer}
+  .row:first-child{border-top:0}
+  .row:hover{background:#fffafc}
+  .row .main{flex:1;min-width:0;font-weight:800}
+  .row .main small{display:block;color:var(--muted);font-weight:600}
+  .tag{font-size:11.5px;font-weight:800;border-radius:99px;padding:3px 9px;background:#f6eff2;color:var(--muted);white-space:nowrap}
+  .tag.admin{background:var(--ink);color:#fff} .tag.lead{background:var(--pink-soft);color:var(--pink-d)} .tag.off{background:var(--bad-soft);color:var(--bad)}
+  .swatch{width:26px;height:26px;border-radius:8px;flex-shrink:0}
+  .toggle2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .toggle2 button{font:inherit;font-size:14.5px;font-weight:800;padding:12px;border-radius:12px;border:2px solid var(--line);background:#fff;color:var(--muted);cursor:pointer}
+  .toggle2 button.on.yes{background:var(--ok);border-color:var(--ok);color:#fff}
+  .toggle2 button.on.no{background:var(--bad);border-color:var(--bad);color:#fff}
+  .temp{background:var(--mustard-soft);border-radius:14px;padding:14px;margin-top:12px}
+  .temp code{display:block;font-size:20px;font-weight:800;letter-spacing:.05em;margin-top:4px;color:var(--ink)}
+  .qr{display:flex;justify-content:center;margin:14px 0 6px}
+  .qr img,.qr canvas{border:10px solid #fff;border-radius:8px}
+  .audit td{padding:8px 6px;border-top:1px solid var(--line);font-size:13px;vertical-align:top}
+  .audit td.t{color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="grow"><h1>Manage</h1><div class="sub" id="sub"></div></div>
+</header>
+<main class="wrap">
+  <nav class="tabs" id="tabs">
+    <a href="#roster" data-t="roster">🗓️ Roster</a><a href="#people" data-t="people">👥 People</a>
+    <a href="#events" data-t="events">🎪 Events</a><a href="stock.html">📦 Stock</a><a href="payroll.html">💰 Payroll</a><a href="cash.html">💵 Cash</a><a href="sales.html">📈 Sales</a><a href="live.html">📡 Live today</a><a href="#audit" data-t="audit">🧾 Audit trail</a>
+  </nav>
+  <div id="view"><div class="loading">Loading…</div></div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="kk.js"></script>
+<script>
+  var U = KK.requireLogin(['admin','manager']); if(U) KK.nav('manage');
+  var TAB = 'roster', R = null, WEEK = monday(new Date()), SEL = null, DAYIDX = todayIdx(), PEOPLE = null, EVENTS = null, FORM = null;
+  if(U) document.getElementById('sub').textContent = 'Logged in as ' + U.name;
+
+  function pad(n){ return ('0'+n).slice(-2); }
+  function ymdOf(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+  function monday(d){ d = new Date(d); d.setHours(12); d.setDate(d.getDate() - ((d.getDay()+6)%7)); return ymdOf(d); }
+  function addDays(day, n){ var d = new Date(day+'T12:00'); d.setDate(d.getDate()+n); return ymdOf(d); }
+  function todayIdx(){ return (new Date().getDay()+6)%7; }
+  function nice(day, opts){ return new Date(day+'T12:00').toLocaleDateString('en-SG', opts || {day:'numeric', month:'short'}); }
+  function esc(s){ return KK.esc(s); }
+  function view(html){ document.getElementById('view').innerHTML = html; }
+  function msg(id, cls, t){ var el = document.getElementById(id); if(el) el.innerHTML = t ? '<div class="msg '+cls+'">'+esc(t)+'</div>' : ''; }
+
+  function route(){
+    TAB = (location.hash || '#roster').slice(1);
+    document.querySelectorAll('#tabs a[data-t]').forEach(function(a){ a.classList.toggle('on', a.dataset.t === TAB); });
+    FORM = null;
+    if(TAB === 'people') loadPeople(); else if(TAB === 'events') loadEvents(); else if(TAB === 'audit') loadAudit(); else loadRoster();
+  }
+  window.addEventListener('hashchange', route);
+
+  // =================================================================== ROSTER
+  function loadRoster(){
+    KK.post('rosterWeek', {start: WEEK}).then(function(r){
+      if(!r.ok) return view('<div class="msg bad">'+esc(r.error)+'</div>');
+      R = r; renderRoster();
+    });
+  }
+  function colourOf(ev){ var e = (R.events||[]).concat(EVENTS||[]).filter(function(x){ return x.name === ev; })[0]; return e ? e.colour : 'grey'; }
+  function shiftsAt(un, day){ return R.shifts.filter(function(s){ return s.username === un && s.date === day; }); }
+
+  function renderRoster(){
+    var days = R.days, today = KK.ymd();
+    var html = '<div class="bar"><button class="sbtn" onclick="moveWeek(-7)">‹</button><span class="wk">'+nice(days[0])+' – '+nice(days[6])+'</span>'+
+      '<button class="sbtn" onclick="moveWeek(7)">›</button><button class="sbtn" onclick="WEEK=monday(new Date());SEL=null;loadRoster()">This week</button>'+
+      '<span class="grow"></span><button class="sbtn" onclick="copyWeek()">⧉ Copy last week</button></div>'+
+      '<div class="days">'+days.map(function(d, i){ return '<button class="'+(i===DAYIDX?'on':'')+'" onclick="DAYIDX='+i+';renderRoster()">'+nice(d,{weekday:'short'})+' '+nice(d,{day:'numeric'})+'</button>'; }).join('')+'</div>'+
+      '<div id="rmsg"></div><div class="rg">';
+    var wide = function(i){ return i === DAYIDX ? '' : ' wide'; };
+    html += '<div></div>' + days.map(function(d, i){ return '<div class="h'+(d===today?' today':'')+wide(i)+'">'+nice(d,{weekday:'short'})+'<br>'+nice(d,{day:'numeric'})+'</div>'; }).join('');
+    // event banners: one row per event, spanning the days it runs this week
+    R.events.forEach(function(e){
+      var s = days.findIndex(function(d){ return !e.start || d >= e.start; }), en = 6 - days.slice().reverse().findIndex(function(d){ return !e.end || d <= e.end; });
+      if(s < 0 || en < s) return;
+      html += '<div class="n" style="font-size:11px;color:var(--muted)">'+(e.location?esc(e.location):'')+'</div>';
+      var phone = window.innerWidth <= 700;
+      for(var i = 0; i < 7; i++){
+        var inRange = i >= s && i <= en;
+        if(phone) html += inRange ? '<div class="ban'+wide(i)+'" style="'+KK.colour(e.colour)+'">'+esc(e.name)+'</div>' : '<div class="'+wide(i).trim()+'"></div>';
+        else if(i === s){ html += '<div class="ban" style="grid-column:span '+(en-s+1)+';'+KK.colour(e.colour)+'">'+esc(e.name)+'</div>'; i = en; }
+        else html += '<div></div>';
+      }
+    });
+    R.users.forEach(function(u){
+      html += '<div class="n">'+esc(u.name)+'<small>'+esc(u.username)+'</small></div>';
+      days.forEach(function(d, i){
+        var list = shiftsAt(u.username, d), key = u.username+'|'+d;
+        html += '<div class="cell'+wide(i)+(SEL && SEL.key===key?' sel':'')+'" onclick="pick(\''+u.username+'\',\''+d+'\')">'+
+          (list.length ? list.map(function(s){
+            return s.type==='standby' ? '<div class="chipSb">Standby'+(s.note?'<br>'+esc(s.note):'')+'</div>'
+              : '<div class="chipS" style="'+KK.colour(colourOf(s.event))+'">'+(s.lead?'⭐ ':'')+esc(s.start)+'–'+esc(s.end)+'<small>'+esc(s.event)+'</small></div>'; }).join('')
+            : '<span class="plus">+</span>')+'</div>';
+      });
+    });
+    html += '</div>';
+    if(!R.users.length) html += '<div class="msg warn">No staff yet. Add people in the People tab.</div>';
+    if(!R.events.length) html += '<div class="msg warn">No events running this week. Create one in the Events tab.</div>';
+    html += '<div id="editor"></div>';
+    view(html);
+    if(SEL) renderEditor();
+  }
+  function moveWeek(n){ WEEK = addDays(WEEK, n); SEL = null; loadRoster(); }
+
+  function pick(un, day){
+    var list = shiftsAt(un, day), s = list[0];
+    SEL = { key: un+'|'+day, username: un, date: day, list: list, id: s ? s.id : '', type: s ? s.type : 'shift', event: s ? s.event : '',
+            start: s ? s.start : '', end: s ? s.end : '', note: s ? s.note : '', lead: s ? !!s.lead : false };
+    var running = eventsOn(day);
+    if(!SEL.event && running.length === 1) SEL.event = running[0].name;
+    renderRoster();
+    document.getElementById('editor').scrollIntoView({behavior:'smooth', block:'nearest'});
+  }
+  function eventsOn(day){ return R.events.filter(function(e){ return (!e.start || e.start <= day) && (!e.end || e.end >= day); }); }
+  function presets(){
+    var count = {};
+    R.shifts.forEach(function(s){ if(s.type==='shift'){ var k = s.start+'–'+s.end; count[k] = (count[k]||0)+1; } });
+    ['15:00–22:00','11:30–22:00','17:00–22:00','10:00–18:00'].forEach(function(k){ count[k] = (count[k]||0) + 0.5; });
+    return Object.keys(count).sort(function(a,b){ return count[b]-count[a]; }).slice(0,5);
+  }
+  function renderEditor(){
+    var u = R.users.filter(function(x){ return x.username === SEL.username; })[0] || {name:SEL.username};
+    var running = eventsOn(SEL.date), others = SEL.list.filter(function(s){ return s.id !== SEL.id; });
+    var html = '<div class="card ed"><div style="display:flex;align-items:center;gap:8px"><h2 style="margin:0">'+esc(u.name)+' · '+nice(SEL.date,{weekday:'short',day:'numeric',month:'short'})+'</h2><span class="grow"></span>'+
+      '<button class="sbtn" onclick="SEL=null;renderRoster()">✕</button></div>';
+    if(others.length || (SEL.id && SEL.list.length > 1)) html += '<div class="chips" style="margin-top:10px">'+SEL.list.map(function(s){
+      return '<button class="chip plain'+(s.id===SEL.id?' on':'')+'" onclick="editExisting(\''+s.id+'\')">'+(s.type==='standby'?'Standby':esc(s.event)+' '+esc(s.start))+'</button>'; }).join('')+
+      '<button class="chip plain'+(!SEL.id?' on':'')+'" onclick="editExisting(\'\')">+ Another shift</button></div>';
+    html += '<label class="f">Event</label><div class="chips">'+running.map(function(e){
+        return '<button class="chip'+(SEL.type==='shift'&&SEL.event===e.name?' on':'')+'" style="'+KK.colour(e.colour)+'" onclick="SEL.type=\'shift\';SEL.event=\''+esc(e.name).replace(/'/g,"\\'")+'\';renderEditor()">'+esc(e.name)+'</button>'; }).join('')+
+      '<button class="chip plain'+(SEL.type==='standby'?' on':'')+'" onclick="SEL.type=\'standby\';renderEditor()">🕐 Standby</button></div>'+
+      (running.length ? '' : '<p class="hint">No events run on this day. Add or extend one in the Events tab.</p>');
+    if(SEL.type === 'shift'){
+      html += '<label class="f">Time</label><div class="chips">'+presets().map(function(p){
+        return '<button class="chip plain'+(SEL.start+'–'+SEL.end===p?' on':'')+'" onclick="setTime(\''+p+'\')">'+p+'</button>'; }).join('')+'</div>'+
+        '<div class="times"><input id="tStart" value="'+esc(SEL.start)+'" placeholder="15:00" oninput="SEL.start=this.value"><span class="hint" style="margin:0">to</span>'+
+        '<input id="tEnd" value="'+esc(SEL.end)+'" placeholder="22:00" oninput="SEL.end=this.value"></div><p class="hint">24-hour (22:00) or 10pm both work.</p>';
+    }
+    if(SEL.type === 'shift') html += '<label class="f">Checklist</label><div class="toggle2"><button class="'+(SEL.lead?'on yes':'')+'" onclick="SEL.lead=true;renderEditor()">⭐ In charge</button>'+
+      '<button class="'+(!SEL.lead?'on no':'')+'" style="'+(!SEL.lead?'background:var(--ink);border-color:var(--ink)':'')+'" onclick="SEL.lead=false;renderEditor()">Crew</button></div>'+
+      '<p class="hint">The person in charge does the opening/closing checklist. Everyone else just clocks in and out. If they\'re not on site, anyone can do it.</p>';
+    html += '<label class="f">Note (optional)</label><input id="tNote" value="'+esc(SEL.note)+'" placeholder="'+(SEL.type==='standby'?'e.g. after 5pm':'e.g. lead for the day')+'" oninput="SEL.note=this.value">'+
+      '<div id="emsg"></div><div class="bar"><button class="sbtn pri" onclick="saveShift()">Save</button>'+
+      (SEL.id ? '<button class="sbtn danger" onclick="delShift()">Remove</button>' : '')+'</div></div>';
+    document.getElementById('editor').innerHTML = html;
+  }
+  function editExisting(id){
+    var s = SEL.list.filter(function(x){ return x.id === id; })[0];
+    Object.assign(SEL, s ? {id:s.id, type:s.type, event:s.event, start:s.start, end:s.end, note:s.note, lead:!!s.lead} : {id:'', type:'shift', event:'', start:'', end:'', note:'', lead:false});
+    renderEditor();
+  }
+  function setTime(p){ var t = p.split('–'); SEL.start = t[0]; SEL.end = t[1]; renderEditor(); }
+  function saveShift(){
+    if(SEL.type==='shift' && !SEL.event) return msg('emsg','bad','Pick the event.');
+    KK.post('rosterSave', {id:SEL.id, date:SEL.date, username:SEL.username, type:SEL.type, event:SEL.type==='shift'?SEL.event:'', start:SEL.start, end:SEL.end, note:SEL.note, lead:SEL.lead})
+      .then(function(r){ if(!r.ok) return msg('emsg','bad', r.error); SEL = null; loadRoster(); });
+  }
+  function delShift(){ KK.post('rosterDelete', {id:SEL.id}).then(function(r){ if(!r.ok) return msg('emsg','bad', r.error); SEL = null; loadRoster(); }); }
+  function copyWeek(){
+    KK.post('rosterCopyWeek', {from: addDays(WEEK,-7), to: WEEK}).then(function(r){
+      if(!r.ok) return msg('rmsg','bad', r.error);
+      loadRoster(); setTimeout(function(){ msg('rmsg','ok', r.copied ? 'Copied '+r.copied+' shifts from last week. Adjust anything that changed.' : 'Nothing new to copy from last week.'); }, 400);
+    });
+  }
+
+  // =================================================================== PEOPLE
+  function loadPeople(){ KK.post('users').then(function(r){ if(!r.ok) return view('<div class="msg bad">'+esc(r.error)+'</div>'); PEOPLE = r.users; renderPeople(); }); }
+  function renderPeople(note){
+    var order = {admin:0, lead:1, crew:2};
+    var list = PEOPLE.slice().sort(function(a,b){ return (b.active-a.active) || (order[a.role]-order[b.role]) || a.name.localeCompare(b.name); });
+    view('<div class="bar"><span class="wk">'+list.filter(function(u){ return u.active; }).length+' active staff</span><span class="grow"></span>'+
+      '<button class="sbtn pri" onclick="FORM={isNew:true,role:\'crew\'};renderPeople()">+ Add person</button></div>'+
+      (note||'')+(FORM ? personForm() : '')+
+      '<div class="card" style="padding:0;overflow:hidden">'+list.map(function(u){
+        return '<div class="row" onclick="editPerson(\''+u.username+'\')"><div class="main">'+esc(u.name)+'<small>'+esc(u.username)+(u.phone?' · '+esc(u.phone):'')+
+          (u.rate!==''&&u.rate!==undefined?' · $'+u.rate+(u.payType==='monthly'?'/month':'/h'):' · no pay rate')+'</small></div>'+
+          (u.mustChange && u.active ? '<span class="tag">New password pending</span>' : '')+(u.active ? '<span class="tag '+(u.role==='manager'?'lead':u.role)+'">'+u.role+'</span>' : '<span class="tag off">Inactive</span>')+'</div>'; }).join('')+'</div>');
+  }
+  function editPerson(un){
+    var u = PEOPLE.filter(function(x){ return x.username === un; })[0];
+    if(U.role !== 'admin' && u.role !== 'crew') return renderPeople('<div class="msg warn">Only an admin can edit '+esc(u.name)+' ('+u.role+').</div>');
+    FORM = Object.assign({}, u); renderPeople(); window.scrollTo({top:0,behavior:'smooth'});
+  }
+  function personForm(){
+    var f = FORM;
+    return '<div class="card"><h2>'+(f.isNew ? 'Add a person' : esc(f.name))+'</h2>'+
+      '<label class="f" for="pName">Name</label><input id="pName" value="'+esc(f.name||'')+'" placeholder="e.g. Khin" oninput="FORM.name=this.value'+(f.isNew?';autoUser()':'')+'">'+
+      (f.isNew ? '<label class="f" for="pUser">Username (what they log in with)</label><input id="pUser" value="'+esc(f.username||'')+'" autocapitalize="none" placeholder="e.g. khin" oninput="FORM.username=this.value;FORM.touched=true">' : '<p class="hint">Username: <b>'+esc(f.username)+'</b></p>')+
+      '<div class="row2"><div><label class="f" for="pRole">Role</label><select id="pRole" onchange="FORM.role=this.value"'+(U.role==='admin'?'':' disabled')+'>'+['crew','manager','admin'].map(function(r){ return '<option'+(f.role===r?' selected':'')+'>'+r+'</option>'; }).join('')+'</select></div>'+
+      '<div><label class="f" for="pPhone">Phone (optional)</label><input id="pPhone" value="'+esc(f.phone||'')+'" inputmode="tel" oninput="FORM.phone=this.value"></div></div>'+
+      (U.role!=='admin' ? '<p class="hint">Pay: '+(f.rate!==''&&f.rate!==undefined?'$'+esc(f.rate)+(f.payType==='monthly'?' a month':' an hour'):'not set')+'. Only Jay or Hazel can set or change pay.</p>' :
+      '<div class="row2"><div><label class="f" for="pPay">Pay</label><select id="pPay" onchange="FORM.payType=this.value;renderPeople()"><option value="hourly"'+(f.payType!=='monthly'?' selected':'')+'>Hourly</option><option value="monthly"'+(f.payType==='monthly'?' selected':'')+'>Monthly salary</option></select></div>'+
+      '<div><label class="f" for="pRate">'+(f.payType==='monthly'?'Salary per month ($)':'Rate per hour ($)')+'</label><input id="pRate" type="number" step="0.01" min="0" value="'+esc(f.rate===undefined?'':f.rate)+'" oninput="FORM.rate=this.value" placeholder="e.g. '+(f.payType==='monthly'?'3200':'11')+'"></div></div>')+
+      '<p class="hint">Crew: clock in, evidence, stock take, own roster/hours, notices, handbook, claims. Manager: everything an admin can do except approve their own claims or hours, manage admins/managers, or change settings. Admin: everything.'+(U.role==='admin'?'':' Only an admin can make someone a manager or admin.')+'</p>'+
+      (f.isNew ? '' : onOff('Status', f.active, 'Active', 'Left the company', 'People who have left can\'t log in. Their hours and payslips are kept.'))+
+      '<div id="pmsg"></div><div class="bar"><button class="sbtn pri" onclick="savePerson()">'+(f.isNew?'Add and get temporary password':'Save')+'</button>'+
+      (f.isNew ? '' : '<button class="sbtn" onclick="resetPw()">Reset password</button>')+'<button class="sbtn" onclick="FORM=null;renderPeople()">Cancel</button></div></div>';
+  }
+  function autoUser(){
+    if(FORM.touched) return;
+    FORM.username = String(FORM.name||'').trim().split(/\s+/)[0].toLowerCase().replace(/[^a-z0-9.]/g,'');
+    var el = document.getElementById('pUser'); if(el) el.value = FORM.username;
+  }
+  function tempBox(un, temp, what){
+    return '<div class="temp"><b>'+what+'</b> Send these to them (e.g. on WhatsApp). They\'ll pick their own password the first time they log in.'+
+      '<code>'+esc(un)+' · '+esc(temp)+'</code><button class="sbtn" style="margin-top:8px" onclick="copyText(\'Kwazy Korndog staff app\\nUsername: '+esc(un)+'\\nTemporary password: '+esc(temp)+'\\n'+esc(location.href.replace(/admin\.html.*$/,'login.html'))+'\', this)">Copy message</button></div>';
+  }
+  function copyText(t, b){
+    var done = function(){ b.textContent = 'Copied'; };
+    try{ navigator.clipboard.writeText(t).then(done, function(){ prompt('Copy this:', t); }); }catch(e){}
+  }
+  function savePerson(){
+    var f = FORM;
+    KK.post('userSave', {isNew:!!f.isNew, username:f.username, name:f.name, role:f.role||'crew', phone:f.phone, active:f.active!==false, payType:f.payType||'hourly', rate:f.rate===undefined?'':f.rate}).then(function(r){
+      if(!r.ok) return msg('pmsg','bad', r.error);
+      FORM = null;
+      KK.post('users').then(function(x){ PEOPLE = x.users; renderPeople(r.temp ? tempBox(r.username, r.temp, '✅ '+f.name+' added.') : '<div class="msg ok">Saved.</div>'); });
+    });
+  }
+  function resetPw(){
+    var f = FORM;
+    KK.post('userReset', {username:f.username}).then(function(r){
+      if(!r.ok) return msg('pmsg','bad', r.error);
+      FORM = null; KK.post('users').then(function(x){ PEOPLE = x.users; renderPeople(tempBox(r.username, r.temp, '🔑 Password reset for '+f.name+'.')); });
+    });
+  }
+
+  // A clear two-way switch (instead of a small checkbox)
+  function onOff(label, on, yes, no, hint){
+    return '<label class="f">'+label+'</label><div class="toggle2"><button class="'+(on?'on yes':'')+'" onclick="FORM.active=true;rerender()">✓ '+yes+'</button>'+
+      '<button class="'+(!on?'on no':'')+'" onclick="FORM.active=false;rerender()">'+no+'</button></div><p class="hint">'+hint+'</p>';
+  }
+  function rerender(){ TAB === 'events' ? renderEvents() : renderPeople(); }
+
+  // =================================================================== EVENTS
+  var COLS = ['green','purple','orange','pink','blue','yellow','teal','grey'];
+  var TPLS = [];
+  function loadEvents(){ Promise.all([KK.post('events'), KK.post('templates')]).then(function(r){ if(!r[0].ok) return view('<div class="msg bad">'+esc(r[0].error)+'</div>'); EVENTS = r[0].events; TPLS = (r[1].templates||[]).map(function(t){ return t.name; }); renderEvents(); }); }
+  function renderEvents(note){
+    var list = EVENTS.slice().sort(function(a,b){ return (b.active-a.active) || String(b.start).localeCompare(String(a.start)); });
+    view('<div class="bar"><span class="wk">Events</span><span class="grow"></span><button class="sbtn pri" onclick="FORM={isNew:true,colour:\'green\',active:true};renderEvents()">+ New event</button></div>'+
+      (note||'')+(FORM ? eventForm() : '')+
+      '<div class="card" style="padding:0;overflow:hidden">'+(list.length ? list.map(function(e, i){
+        return '<div class="row" onclick="editEvent('+EVENTS.indexOf(e)+')"><span class="swatch" style="'+KK.colour(e.colour)+'"></span><div class="main">'+esc(e.name)+
+          '<small>'+(e.start?nice(e.start)+' – '+nice(e.end||e.start):'No dates')+(e.location?' · '+esc(e.location):'')+'</small></div>'+
+          (e.active ? '<button class="sbtn" onclick="event.stopPropagation();showQR('+EVENTS.indexOf(e)+')">QR code</button>' : '<span class="tag off">Archived</span>')+'</div>'; }).join('')
+        : '<p class="hint" style="padding:14px;margin:0">No events yet.</p>')+'</div><div id="qrBox"></div>');
+  }
+  function editEvent(i){ FORM = Object.assign({}, EVENTS[i]); renderEvents(); window.scrollTo({top:0,behavior:'smooth'}); }
+  function eventForm(){
+    var f = FORM;
+    return '<div class="card"><h2>'+(f.isNew ? 'New event' : esc(f.name))+'</h2>'+
+      (f.isNew ? '<label class="f" for="eName">Name</label><input id="eName" value="'+esc(f.name||'')+'" placeholder="e.g. Tampines Bazaar" oninput="FORM.name=this.value">' : '')+
+      '<label class="f" for="eLoc">Location</label><input id="eLoc" value="'+esc(f.location||'')+'" placeholder="e.g. Tampines Hub" oninput="FORM.location=this.value">'+
+      '<div class="row2"><div><label class="f" for="eS">First day</label><input id="eS" type="date" value="'+esc(f.start||'')+'" onchange="FORM.start=this.value"></div>'+
+      '<div><label class="f" for="eE">Last day</label><input id="eE" type="date" value="'+esc(f.end||'')+'" onchange="FORM.end=this.value"></div></div>'+
+      '<label class="f">Colour on the roster</label><div class="chips">'+COLS.map(function(c){
+        return '<button class="chip'+(f.colour===c?' on':'')+'" style="'+KK.colour(c)+'" onclick="FORM.colour=\''+c+'\';renderEvents()">'+c+'</button>'; }).join('')+'</div>'+
+      (f.isNew ? '<label class="f" for="eT">Stock minimums from template</label><select id="eT" onchange="FORM.template=this.value"><option value="">Default minimums</option>'+
+          TPLS.map(function(t){ return '<option'+(f.template===t?' selected':'')+'>'+esc(t)+'</option>'; }).join('')+'</select><p class="hint">You can still change any number later under Manage → Stock.</p>'
+        : '<p class="hint">Stock minimums: '+(f.template?esc(f.template):'default')+'. Change them under Manage → Stock.</p>'+onOff('Status', f.active, 'Running', 'Archived', 'Archived events disappear from clock-in, the roster and stock. Their history is kept.'))+
+      '<div id="evmsg"></div><div class="bar"><button class="sbtn pri" onclick="saveEvent()">Save</button><button class="sbtn" onclick="FORM=null;renderEvents()">Cancel</button></div></div>';
+  }
+  function saveEvent(){
+    var f = FORM;
+    KK.post('eventSave', {isNew:!!f.isNew, name:f.name, location:f.location, start:f.start, end:f.end, colour:f.colour, active:f.active!==false, template:f.template||''}).then(function(r){
+      if(!r.ok) return msg('evmsg','bad', r.error);
+      FORM = null; KK.post('events').then(function(x){ EVENTS = x.events; renderEvents('<div class="msg ok">Saved.</div>'); });
+    });
+  }
+  function showQR(i){
+    var e = EVENTS[i], url = location.href.replace(/admin\.html.*$/, '') + 'clock.html?event=' + encodeURIComponent(e.name);
+    document.getElementById('qrBox').innerHTML = '<div class="card" style="text-align:center"><h2>'+esc(e.name)+'</h2><p class="hint">Print this and stick it at the booth. Scanning opens clock-in with this event picked.</p>'+
+      '<div class="qr" id="qrc"></div><p class="hint" style="word-break:break-all">'+esc(url)+'</p><p class="hint">On a phone: long-press the code to save it.</p></div>';
+    if(window.QRCode) new QRCode(document.getElementById('qrc'), {text:url, width:220, height:220, correctLevel: QRCode.CorrectLevel.M});
+    else document.getElementById('qrc').innerHTML = '<p class="hint">QR library didn\'t load. Use the link above in any QR maker.</p>';
+    document.getElementById('qrBox').scrollIntoView({behavior:'smooth'});
+  }
+
+  // =================================================================== AUDIT
+  function loadAudit(){
+    KK.post('audit').then(function(r){
+      if(!r.ok) return view('<div class="msg bad">'+esc(r.error)+'</div>');
+      view('<div class="bar"><span class="wk">Recent changes</span></div><div class="card"><table class="audit" style="width:100%;border-collapse:collapse">'+
+        (r.items.length ? r.items.map(function(a){ return '<tr><td class="t">'+esc(a.time)+'</td><td><b>'+esc(a.by)+'</b></td><td>'+esc(a.action)+'<br><span class="hint">'+esc(a.details)+'</span></td></tr>'; }).join('')
+          : '<tr><td class="hint">No changes yet.</td></tr>')+'</table></div>');
+    });
+  }
+
+  window.addEventListener('resize', function(){ if(TAB==='roster' && R) renderRoster(); });
+  if(U) KK.post('events').then(function(r){ EVENTS = r.events || []; route(); });
+</script>
+</body>
+</html>

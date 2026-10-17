@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>My Shifts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="kk.css">
+<style>
+  .stat{display:flex;align-items:baseline;gap:8px}
+  .cashbox{border-radius:20px;padding:16px;margin-top:12px;border:2px solid #c81e3a;background:#fff}
+  .cashbox.over{background:#c81e3a;color:#fff}
+  .cashbox h2{margin:0;font-size:19px}
+  .cashbox .tot{font-family:'Baloo 2',sans-serif;font-size:36px;font-weight:800;line-height:1.1}
+  .cashbox p{margin:4px 0 0;font-weight:600;font-size:14px}
+  .cb{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+  .cashbox.over .cb{border-color:rgba(255,255,255,.25)}
+  .cb .m{flex:1;font-weight:800}
+  .cb .m small{display:block;font-weight:600;opacity:.8;font-size:12.5px}
+  .cb input{width:22px;height:22px}
+  .dep{background:#fff;color:var(--ink);border-radius:14px;padding:12px;margin-top:10px}
+  .seg2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+  .seg2 button{font:inherit;font-weight:800;font-size:14px;padding:10px;border-radius:12px;border:1.5px solid var(--line);background:#fff;color:var(--muted)}
+  .seg2 button.on{background:var(--pink);border-color:var(--pink);color:#fff}
+  label.pick{display:flex;align-items:center;justify-content:center;border:2px dashed #f0b9cf;border-radius:14px;padding:14px;font-weight:800;color:var(--pink-d);cursor:pointer;margin-top:8px}
+  #proof{position:absolute;opacity:0;width:1px;height:1px}
+  .pend{margin-top:10px;font-size:13.5px;font-weight:700;opacity:.9}
+  .stat b{font-family:'Baloo 2',sans-serif;font-size:40px;line-height:1;color:var(--pink-d)}
+  .stat span{color:var(--muted);font-weight:700}
+  .day{font-size:11.5px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:16px 4px 6px}
+  .shift{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;margin-top:6px;font-weight:700}
+  .shift small{display:block;font-weight:600;opacity:.8}
+  .shift .tm{margin-left:auto;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .shift.sb{background:var(--card);border:1.5px dashed var(--line);color:var(--muted)}
+  .links{background:var(--card);border:1.5px solid var(--line);border-radius:18px;margin-top:12px;overflow:hidden}
+  .links a{display:flex;align-items:center;gap:12px;padding:14px 16px;border-top:1px solid var(--line);text-decoration:none;color:inherit}
+  .links a:first-child{border-top:0}
+  .links a span{font-size:22px}
+  .links a b{flex:1;font-size:15.5px}
+  .links a small{display:block;color:var(--muted);font-weight:600;font-size:12.5px}
+  .links a i{color:#d9c4cd;font-style:normal;font-weight:800}
+  .links a.soon{opacity:.5}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  td{padding:7px 4px;border-top:1px solid var(--line)}
+  td.r{text-align:right;font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<header class="top">
+  <div><h1>Me</h1><div class="sub" id="sub"></div></div>
+</header>
+<main class="wrap">
+  <div id="load" class="loading">Loading…</div>
+  <div id="cash"></div>
+  <div id="body" style="display:none">
+    <div class="card"><div class="stat"><b id="hours">0</b><span>hours worked in <span id="month"></span></span></div></div>
+    <div class="links">
+      <a href="claims.html"><span>🧾</span><b>Expense claims<small>Claim back what you spent on the business</small></b><i>›</i></a>
+      <a href="payslips.html"><span>💰</span><b>Payslips<small>Your monthly payslips</small></b><i>›</i></a>
+    </div>
+    <h2 style="margin:20px 4px 0;font-size:17px">My shifts</h2>
+    <div id="upcoming"></div>
+    <div class="card"><h2>Recent clock-ins</h2><table id="recent"></table></div>
+
+    <form class="card" id="pwForm" autocomplete="off">
+      <h2>Change password</h2>
+      <label class="f" for="old">Current password</label><input id="old" type="password" autocomplete="current-password">
+      <label class="f" for="np">New password</label><input id="np" type="password" autocomplete="new-password" placeholder="At least 6 characters">
+      <div id="pmsg"></div>
+      <button class="btn ghost" style="margin-top:12px">Save new password</button>
+    </form>
+    <button class="btn ghost" style="margin-top:14px" onclick="KK.logout()">Log out</button>
+  </div>
+</main>
+<script src="kk.js"></script>
+<script>
+  var U = KK.requireLogin();
+  if(U){
+    KK.nav('me');
+    document.getElementById('sub').textContent = U.name + ' · ' + U.username;
+    loadCash();
+    Promise.all([KK.post('myShifts'), KK.config()]).then(function(r){
+      var m = r[0], colour = {};
+      (r[1].events||[]).forEach(function(e){ colour[e.name] = e.colour; });
+      if(!m.ok) throw new Error(m.error);
+      document.getElementById('hours').textContent = m.monthHours;
+      document.getElementById('month').textContent = new Date(m.month+'-15').toLocaleDateString('en-SG',{month:'long'});
+      var html = '', last = '';
+      if(!m.upcoming.length) html = '<div class="card"><p class="hint" style="margin:0">No shifts on the roster for the next 3 weeks.</p></div>';
+      m.upcoming.forEach(function(s){
+        if(s.date !== last){ last = s.date; html += '<div class="day">'+new Date(s.date+'T12:00').toLocaleDateString('en-SG',{weekday:'long',day:'numeric',month:'short'})+(s.date===KK.ymd()?' · today':'')+'</div>'; }
+        html += s.type==='standby'
+          ? '<div class="shift sb">🕐 On standby<small style="margin-left:6px">'+KK.esc(s.note)+'</small></div>'
+          : '<div class="shift" style="'+KK.colour(colour[s.event])+'"><div>'+KK.esc(s.event)+'</div><span class="tm">'+KK.esc(s.start)+'–'+KK.esc(s.end)+'</span></div>';
+      });
+      document.getElementById('upcoming').innerHTML = html;
+      document.getElementById('recent').innerHTML = m.recent.length ? m.recent.map(function(t){
+        return '<tr><td>'+KK.esc(t.date.slice(5))+'</td><td>'+KK.esc(t.event)+'</td><td class="r">'+KK.esc(t.in)+'–'+KK.esc(t.out||'…')+'</td><td class="r">'+
+          (t.hours!==''?KK.esc(t.hours)+' h':'')+(t.late?' <span class="flag">late '+KK.esc(t.late)+'m</span>':'')+'</td></tr>'; }).join('')
+        : '<tr><td class="hint">Nothing yet.</td></tr>';
+      document.getElementById('load').style.display='none';
+      document.getElementById('body').style.display='block';
+    }).catch(function(){ document.getElementById('load').innerHTML = 'Could not load. <a href="">Try again</a>.'; });
+
+    document.getElementById('pwForm').onsubmit = function(e){
+      e.preventDefault();
+      var old = document.getElementById('old').value, np = document.getElementById('np').value, m = document.getElementById('pmsg');
+      if(np.length < 6){ m.innerHTML = '<div class="msg bad">Use at least 6 characters.</div>'; return; }
+      KK.post('changePassword',{old:old, password:np}).then(function(r){
+        m.innerHTML = r.ok ? '<div class="msg ok">Password changed.</div>' : '<div class="msg bad">'+KK.esc(r.error)+'</div>';
+        if(r.ok){ document.getElementById('old').value=''; document.getElementById('np').value=''; }
+      });
+    };
+  }
+
+  // ---- cash on hand ----
+  var CASH = null, DEP = null;
+  function loadCash(){ KK.post('myCash').then(function(r){ CASH = r; renderCash(); KK.counts(true); }); }
+  function dname(d){ return new Date(d+'T12:00').toLocaleDateString('en-SG',{weekday:'short', day:'numeric', month:'short'}); }
+  function renderCash(){
+    var el = document.getElementById('cash'), c = CASH;
+    if(!c || (!c.bags.length && !(c.queries||[]).length)){ el.innerHTML = ''; return; }
+    var holding = c.bags.filter(function(b){ return b.status === 'with closer'; }), pend = c.bags.filter(function(b){ return b.status === 'deposited'; });
+    var html = (c.queries||[]).map(function(q){
+      return '<div class="cashbox"><h2>❓ Question about your cash count</h2><p>'+KK.esc(q.event)+' · '+dname(q.date)+(q.checkedBy?', checked by '+KK.esc(q.checkedBy):'')+'</p>'+
+        '<p style="color:#c81e3a">'+KK.esc(q.query)+'</p>'+
+        (q.reply ? '<p class="pend">You replied: '+KK.esc(q.reply)+'. The manager will follow up.</p>'
+          : '<textarea id="rp_'+q.id+'" placeholder="What happened? e.g. gave $10 change twice by mistake, a refund, a note fell out…" style="margin-top:8px"></textarea>'+
+            '<button class="btn" style="margin-top:8px" onclick="reply(\''+q.id+'\')">Send reply</button>')+'</div>';
+    }).join('');
+    if(holding.length){
+      html += '<div class="cashbox'+(c.overdue?' over':'')+'" id="cashbox"><h2>'+(c.overdue?'🚨 Overdue: company cash':'💵 Company cash you\'re holding')+'</h2><div class="tot">'+KK.money(c.holding)+'</div>'+
+        '<p>'+(c.overdue ? 'This was due '+dname(c.due)+'. Hand it over or bank it in today.' : 'Hand it to Rebecca, Jay or Hazel, or bank it in by <b>'+dname(c.due)+'</b>.')+' You have '+c.days+' days from each closing.</p>'+
+        holding.map(function(b){
+          return '<div class="cb">'+(DEP?'<input type="checkbox" '+(DEP.ids[b.id]?'checked':'')+' onchange="DEP.ids[\''+b.id+'\']=this.checked;DEP.amount=\'\';renderCash()">':'')+
+            '<div class="m">'+KK.esc(b.event)+' · '+dname(b.date)+'<small>'+(b.overdue?b.overdue+' day'+(b.overdue>1?'s':'')+' overdue':'Due '+dname(b.due))+'</small></div><b>'+KK.money(b.amount)+'</b></div>'; }).join('')+
+        (DEP ? depForm(holding) : '<button class="btn" style="margin-top:12px;background:'+(c.overdue?'#fff;color:#c81e3a':'var(--pink)')+'" onclick="startDep()">I\'ve banked it in / transferred it</button>'+
+          '<p style="font-size:12.5px;margin-top:8px">Handing it to a manager instead? They tap Received on their phone and it disappears from here.</p>')+'</div>';
+    }
+    if(pend.length) html += '<div class="card"><h2 style="margin:0">Waiting for a manager to check</h2>'+pend.map(function(b){
+      return '<div class="cb"><div class="m">'+KK.esc(b.event)+' · '+dname(b.date)+'<small>'+KK.esc(b.method)+' sent · '+KK.esc(b.bankedAt)+'</small></div><b>'+KK.money(b.amount)+'</b></div>'; }).join('')+'</div>';
+    el.innerHTML = html;
+    if(location.hash === '#cash'){ el.scrollIntoView(); history.replaceState(null, '', 'me.html'); }
+  }
+  function reply(id){
+    var t = document.getElementById('rp_'+id).value.trim(); if(!t) return document.getElementById('rp_'+id).focus();
+    KK.post('cashReply', {id:id, reply:t}).then(function(){ loadCash(); });
+  }
+  function startDep(){ DEP = {ids:{}, method:'Bank deposit', amount:'', proof:'', note:''}; CASH.bags.forEach(function(b){ if(b.status==='with closer') DEP.ids[b.id] = true; }); renderCash(); }
+  function depForm(holding){
+    var sel = holding.filter(function(b){ return DEP.ids[b.id]; }), total = sel.reduce(function(s, b){ return s + b.amount; }, 0);
+    return '<div class="dep"><b>Bank in or transfer</b><p class="hint" style="margin:4px 0 0">Tick the cash it covers. Selected: <b>'+KK.money(total)+'</b></p>'+
+      '<div class="seg2"><button class="'+(DEP.method==='Bank deposit'?'on':'')+'" onclick="DEP.method=\'Bank deposit\';renderCash()">🏦 Bank deposit</button><button class="'+(DEP.method==='Bank transfer'?'on':'')+'" onclick="DEP.method=\'Bank transfer\';renderCash()">📱 Transfer</button></div>'+
+      (CASH.transferDetails ? '<div class="msg ok" style="margin-top:8px">Send to: <b>'+KK.esc(CASH.transferDetails)+'</b></div>' : '<p class="hint">Ask Jay or Hazel for the company bank details.</p>')+
+      '<label class="f">Amount '+(DEP.method==='Bank transfer'?'transferred':'banked')+'</label><input type="number" step="0.01" id="dAmt" value="'+(DEP.amount!==''?KK.esc(DEP.amount):total.toFixed(2))+'" oninput="DEP.amount=this.value">'+
+      '<label class="f">'+(DEP.method==='Bank transfer'?'Screenshot of the transfer':'Photo of the deposit slip')+'</label>'+
+      (DEP.proof ? '<img src="'+DEP.proof+'" style="width:100%;max-height:220px;object-fit:cover;border-radius:12px;margin-top:6px" alt=""><button class="btn ghost" style="margin-top:6px" onclick="DEP.proof=\'\';renderCash()">Retake</button>'
+        : '<label class="pick" for="proof">📸 Add '+(DEP.method==='Bank transfer'?'screenshot':'slip photo')+'</label><input id="proof" type="file" accept="image/*" onchange="pickProof(this)">')+
+      '<label class="f">Note (if the amount is different)</label><input id="dNote" value="'+KK.esc(DEP.note)+'" oninput="DEP.note=this.value">'+
+      '<div id="dmsg"></div><button class="btn" style="margin-top:12px" onclick="sendDep()">Send for checking</button><button class="btn ghost" onclick="DEP=null;renderCash()">Cancel</button></div>';
+  }
+  function pickProof(inp){ var f = inp.files && inp.files[0]; if(f) KK.shrink(f, 1400, 0.75).then(function(d){ DEP.proof = d; renderCash(); }); }
+  function sendDep(){
+    var ids = Object.keys(DEP.ids).filter(function(k){ return DEP.ids[k]; }), m = document.getElementById('dmsg');
+    if(!ids.length) return m.innerHTML = '<div class="msg bad">Tick the cash this covers.</div>';
+    m.innerHTML = '<div class="msg warn">Sending…</div>';
+    KK.post('cashDeposit', {ids:ids, method:DEP.method, amount:document.getElementById('dAmt').value, proof:DEP.proof, note:DEP.note}).then(function(r){
+      if(!r.ok) return m.innerHTML = '<div class="msg bad">'+KK.esc(r.error)+'</div>';
+      DEP = null; loadCash();
+    });
+  }
+</script>
+</body>
+</html>

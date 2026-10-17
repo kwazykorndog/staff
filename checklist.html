@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Event Checklist</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="kk.css">
+<style>
+  .prog{margin-top:14px;background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:11px 14px;
+    display:flex;align-items:center;gap:12px;position:sticky;top:calc(8px + env(safe-area-inset-top));z-index:5}
+  .bar{flex:1;height:8px;border-radius:99px;background:var(--pink-soft);overflow:hidden}
+  .bar i{display:block;height:100%;width:0;background:var(--pink);transition:width .2s}
+  .prog b{font-size:13px;white-space:nowrap}
+
+  .who{display:flex;align-items:center;gap:10px;font-weight:700;font-size:14px}
+  .who .av{width:36px;height:36px;border-radius:99px;background:var(--pink-soft);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+  .who small{display:block;color:var(--muted);font-weight:600;font-size:12.5px}
+  .who a{margin-left:auto;font-size:12.5px;color:var(--pink-d);font-weight:800;text-decoration:none;white-space:nowrap}
+
+  /* tiles — any order */
+  .tile{background:var(--card);border:1.5px solid var(--line);border-radius:18px;margin-top:10px;overflow:hidden}
+  .tile.fin{border-color:#bfe6d3}
+  .tile-h{display:flex;align-items:center;gap:12px;padding:13px 14px;cursor:pointer;user-select:none}
+  .tile-i{width:40px;height:40px;border-radius:12px;background:var(--pink-soft);flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--pink-d)}
+  .tile-i img{width:100%;height:100%;object-fit:cover}
+  .tile-t{flex:1;min-width:0;font-weight:800;font-size:15.5px}
+  .tile-t small{display:block;font-weight:600;font-size:12px;color:var(--muted)}
+  .tile-c{font-size:11.5px;font-weight:800;border-radius:99px;padding:3px 9px;white-space:nowrap;background:var(--pink-soft);color:var(--pink-d)}
+  .tile.fin .tile-c{background:var(--ok-soft);color:var(--ok)}
+  .chev{color:var(--muted);font-weight:800;transition:transform .15s}
+  .tile.open .chev{transform:rotate(90deg)}
+  .tile-b{display:none;border-top:1.5px solid var(--line);padding:4px 0 6px}
+  .tile.open .tile-b{display:block}
+  .tbc{display:block;margin-top:4px;color:var(--amber);font-weight:700}
+
+  .ph{padding:12px 16px 6px}
+  .lbl{font-size:14.5px;font-weight:700}
+  .lbl small{display:block;color:var(--muted);font-weight:600;font-size:12.5px;margin-top:2px}
+  .ph label.cam{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:9px;border:2px dashed #f0b9cf;border-radius:14px;
+    padding:15px;font-weight:800;color:var(--pink-d);cursor:pointer;background:#fffafc}
+  input[type=file]{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}
+  .shot{position:relative;margin-top:9px}
+  .shot img{width:100%;max-height:240px;object-fit:cover;border-radius:14px;display:block}
+  .shot label,.shot button{position:absolute;right:8px;bottom:8px;border:0;border-radius:10px;padding:8px 12px;font:inherit;font-weight:800;font-size:13px;
+    background:rgba(42,26,34,.78);color:#fff;cursor:pointer}
+  .shot .st{position:absolute;left:8px;bottom:8px;border-radius:10px;padding:6px 10px;font-weight:800;font-size:12px;background:rgba(255,255,255,.92);color:var(--ok)}
+  .shot .st.up{color:var(--muted)} .shot .st.fail{color:var(--bad)}
+
+  label.item{display:flex;gap:12px;padding:12px 16px;cursor:pointer}
+  label.item input{position:absolute;opacity:0;pointer-events:none}
+  .box{width:26px;height:26px;border-radius:9px;border:2px solid #e6cfd9;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+    color:#fff;font-weight:900;font-size:15px;margin-top:1px;background:#fff}
+  label.item input:checked + .box{background:var(--ok);border-color:var(--ok)}
+  label.item input:checked + .box::after{content:'✓'}
+  label.item.crit .box{border-color:var(--mustard)}
+  .it{flex:1;min-width:0}
+  .it b{font-size:15px;font-weight:700}
+  .it small{display:block;color:var(--muted);font-size:13px;margin-top:2px}
+
+  .q{padding:12px 16px}
+  .seg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}
+  .seg.col{grid-template-columns:1fr}
+  .seg button{font:inherit;font-weight:800;font-size:15px;padding:11px;border-radius:12px;border:1.5px solid var(--line);background:#fff;color:var(--muted);text-align:center}
+  .seg.col button{text-align:left;padding:12px 14px}
+  .seg button.on{background:var(--pink);border-color:var(--pink);color:#fff}
+  .warnbox{margin-top:9px;background:var(--mustard-soft);border-radius:12px;padding:10px 12px;color:var(--amber);font-weight:800;font-size:13.5px}
+  .warnbox input{margin-top:8px;font-weight:600}
+  .q > input{margin-top:9px}
+
+  .scat{padding:12px 16px 4px;font-size:11.5px;font-weight:900;color:var(--pink-d);text-transform:uppercase;letter-spacing:.06em}
+  .srow{display:flex;align-items:center;gap:10px;padding:8px 16px}
+  .srow.low{background:var(--mustard-soft)}
+  .sname{flex:1;min-width:0}
+  .sname b{font-size:15px;font-weight:700}
+  .sname small{display:block;color:var(--muted);font-size:12px}
+  .srow.low .sname small{color:var(--amber);font-weight:800}
+  .srow input{width:70px;text-align:center;font-weight:800;padding:10px 4px}
+  .srow input:disabled{background:#f6eff2;color:var(--muted)}
+  .srow .na{font:inherit;font-size:12px;font-weight:900;padding:10px 8px;border-radius:10px;border:1.5px solid var(--line);background:#fff;color:var(--muted)}
+  .srow .na.on{background:var(--ink);border-color:var(--ink);color:#fff}
+  .srow .na.off{visibility:hidden}
+
+  .money{position:relative}
+  .money::before{content:'$';position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--muted);font-weight:800}
+  .money input{padding-left:26px;font-weight:700}
+  .diff{margin-top:10px;padding:11px 13px;border-radius:12px;display:flex;justify-content:space-between;align-items:center;font-weight:800;background:#f6eff2;color:var(--muted)}
+  .diff.ok{background:var(--ok-soft);color:var(--ok)}
+  .diff.warn{background:var(--mustard-soft);color:var(--amber)}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="back" href="index.html">‹</a>
+  <div><h1 id="title">Checklist</h1><div class="sub" id="sub"></div></div>
+</header>
+
+<main class="wrap">
+  <div id="load" class="loading">Loading…</div>
+  <div id="gate" style="display:none"></div>
+
+  <div id="form" style="display:none">
+    <div class="card" id="who"></div>
+    <div class="prog"><div class="bar"><i id="barFill"></i></div><b id="progTxt"></b></div>
+    <div id="tiles"></div>
+
+    <div class="card">
+      <label class="f" id="notesLbl">Anything else to report? (optional)</label>
+      <textarea id="notes" oninput="saveDraft()"></textarea>
+    </div>
+    <div id="msg"></div>
+    <button class="btn" id="submit" style="margin-top:14px" onclick="submitList()">Submit</button>
+  </div>
+
+  <div id="done" class="done" style="display:none"></div>
+</main>
+
+<script src="kk.js"></script>
+<script>
+  var q = new URLSearchParams(location.search).get('shift');
+  var SHIFT = q === 'Closing' || q === 'Stock' ? q : 'Opening';
+  var TEXT = {
+    Opening: {title:'Opening evidence', sub:'Done your opening tasks? Add the proof, any order.', notes:'Anything else to report? (optional)', ph:'e.g. Canvas pole bent', submit:'Submit opening evidence'},
+    Closing: {title:'Closing evidence', sub:'Done the clean-down? Add the proof, any order.', notes:'Remarks (optional)', ph:'Anything management should know', submit:'Submit closing evidence'},
+    Stock:   {title:'Stock take', sub:'Count what\'s left. 8-piece and 5-piece packs separately.', notes:'Notes (optional)', ph:'e.g. 2 Cheesy packs torn, thrown away', submit:'Submit stock take'}
+  }[SHIFT];
+  var CFG, LIST = [], STEPS = [], BY = {}, OPEN = {};
+  var V = {}, NOTE = {}, PENDING = {};   // V[key]: tick bool · answer · {thumb,id} photo · {hitpay,deposit} · {cat|item: count}
+  var U = KK.requireLogin(); if(U) KK.nav('today');
+  var ME = null, TOL = 5;
+
+  function key(t){ return t.step + '|' + t.item; }
+  function shown(t){
+    if(!t.showIf) return true;
+    var m = t.showIf.match(/^(.*?)=(.*)$/); if(!m) return true;
+    return String(V[t.step+'|'+m[1].trim()]||'').toLowerCase() === m[2].trim().toLowerCase();
+  }
+  function flagged(t){ return !!t.flagIf && String(V[key(t)]||'').toLowerCase() === t.flagIf.toLowerCase(); }
+
+  document.getElementById('title').textContent = TEXT.title;
+  document.getElementById('sub').textContent = TEXT.sub;
+  document.getElementById('notesLbl').textContent = TEXT.notes;
+  document.getElementById('notes').placeholder = TEXT.ph;
+  document.getElementById('submit').textContent = TEXT.submit;
+
+  if(U) Promise.all([KK.config(), KK.post('me')]).then(function(res){
+    var c = res[0], m = res[1];
+    CFG = c;
+    var s = c.settings||{};
+    if(s['Cash tolerance ($)']!==undefined && s['Cash tolerance ($)']!=='') TOL = +s['Cash tolerance ($)'];
+    LIST = c.checklist.filter(function(t){ return t.shift === SHIFT; });
+    LIST.forEach(function(t){ if(!BY[t.step]){ BY[t.step] = []; STEPS.push(t.step); } BY[t.step].push(t); });
+    if(STEPS.length === 1) OPEN[STEPS[0]] = true;
+    ME = m.ok ? m.clockedIn : null;
+    if(!ME){
+      document.getElementById('load').style.display='none';
+      var g0 = document.getElementById('gate'); g0.style.display='block';
+      g0.innerHTML = '<div class="msg warn">Clock in at your event first. '+TEXT.title+' is for the event you\'re clocked in at.</div>'+
+        '<a class="btn" style="margin-top:14px" href="clock.html">Clock in</a>';
+      return;
+    }
+    if(SHIFT === 'Opening') return showForm();
+    // The stock take lists this event's items and minimums
+    if(SHIFT === 'Stock') KK.post('stockItems', {event:ME.event}).then(function(x){ if(x.ok){ CFG.stock = x.items; if(document.getElementById('form').style.display==='block') render(); } });
+    // Closing evidence and stock take come after Stop sale
+    return KK.post('status',{event:ME.event}).then(function(r){
+      if(r.ok && r.clockedIn && !r.stopSale){
+        document.getElementById('load').style.display='none';
+        var g = document.getElementById('gate'); g.style.display='block';
+        g.innerHTML = '<div class="msg warn">Stop sale hasn\'t been tapped yet. '+TEXT.title+' comes after it.</div>'+
+          '<a class="btn" style="margin-top:14px" href="index.html">Go to the hub to stop sale</a>';
+        return;
+      }
+      showForm();
+    }, showForm);
+  }).catch(function(){
+    document.getElementById('load').innerHTML = 'Could not load. Check your signal and <a href="">try again</a>.';
+  });
+
+  function showForm(){
+    document.getElementById('load').style.display='none';
+    whoBox(); loadDraft(); render();
+    document.getElementById('form').style.display='block';
+  }
+
+  // ---- who ----
+  function whoBox(){
+    document.getElementById('who').innerHTML = '<div class="who"><span class="av">🙋</span><div>'+KK.esc(U.name)+'<small>'+KK.esc(ME.event)+
+      ' · clocked in '+KK.esc(ME.time)+'</small></div></div>';
+  }
+  function identity(){ return {event:ME.event, name:U.username}; }
+
+  // ---- draft (only small thumbnails are kept, so it survives the camera reloading the page) ----
+  function draftKey(){ var w = identity(); return 'kk_draft_'+SHIFT+'_'+KK.ymd()+'_'+w.event+'_'+w.name; }
+  function saveDraft(){
+    try{ localStorage.setItem(draftKey(), JSON.stringify({v:V, n:NOTE, notes:document.getElementById('notes').value})); }catch(e){}
+  }
+  function loadDraft(){
+    V = {}; NOTE = {};
+    try{ var d = JSON.parse(localStorage.getItem(draftKey())||'null');
+      if(d){ V = d.v||{}; NOTE = d.n||{}; document.getElementById('notes').value = d.notes||''; } }catch(e){}
+    Object.keys(V).forEach(function(k){ if(V[k] && V[k].uploading) V[k] = {thumb:V[k].thumb, failed:true}; });
+  }
+  function clearDraft(){ try{ localStorage.removeItem(draftKey()); }catch(e){} }
+
+  // ---- completeness ----
+  function stockVal(t){ return V[key(t)] || (V[key(t)] = {}); }
+  function stockFilled(s, map){ var v = map[s.category+'|'+s.item]; return v==='N/A' ? s.na : (v!==undefined && v!=='' && +v>=0); }
+  function cashDiff(t){ var c = V[key(t)]||{}; return (c.hitpay===''||c.hitpay==null||c.deposit===''||c.deposit==null) ? null : Math.round((+c.deposit - +c.hitpay)*100)/100; }
+  function itemDone(t){
+    var v = V[key(t)], note = (NOTE[key(t)]||'').trim();
+    switch(t.type){
+      case 'photo':  return !!(v && v.id);
+      case 'yesno':  return (v==='Yes'||v==='No') && (!flagged(t) || !!note);
+      case 'choice': return t.options.indexOf(v) >= 0;
+      case 'text':   return !t.critical || !!String(v||'').trim();
+      case 'stock':  var m = stockVal(t); return CFG.stock.every(function(s){ return stockFilled(s, m); });
+      case 'cash':   var c = V[key(t)]||{}; return c.deposit!==undefined && c.deposit!=='' && +c.deposit>=0;
+      default:       return !t.critical || v===true;
+    }
+  }
+  function tileState(s){
+    var items = BY[s].filter(shown), done = items.every(itemDone);
+    var st = BY[s].filter(function(t){ return t.type==='stock'; })[0];
+    var left = items.filter(function(t){ return !itemDone(t); }).length;
+    var txt = done ? '✓ Done' : st ? CFG.stock.filter(function(x){ return stockFilled(x, stockVal(st)); }).length+'/'+CFG.stock.length : left+' to do';
+    var photo = BY[s].filter(function(t){ return t.type==='photo' && V[key(t)] && V[key(t)].thumb; })[0];
+    return {done:done, txt:txt, thumb: photo ? V[key(photo)].thumb : ''};
+  }
+
+  // ---- render ----
+  function render(){
+    var html = '';
+    if(!STEPS.length) html = '<div class="msg warn">Nothing set up yet. Add rows for "'+SHIFT+'" in the Checklist tab of the Google Sheet.</div>';
+    STEPS.forEach(function(s, si){
+      var body = BY[s].map(function(t, ti){ return shown(t) ? itemHTML(t, si+'_'+ti) : ''; }).join('');
+      var hint = BY[s].filter(function(t){ return t.type==='photo'; }).length ? 'Photo' : '';
+      html += '<div class="tile'+(OPEN[s]?' open':'')+'" id="tl'+si+'"><div class="tile-h" onclick="toggle('+si+')"><span class="tile-i" id="ti'+si+'"></span>'+
+        '<span class="tile-t">'+KK.esc(s)+'<small>'+(hint?'📷 Photo + checks':'Checks')+(BY[s][0].handbook?' · <a href="handbook.html?title='+encodeURIComponent(BY[s][0].handbook)+'" onclick="event.stopPropagation()" style="color:var(--pink-d)">📖 How to</a>':'')+'</small></span><span class="tile-c" id="tc'+si+'"></span><span class="chev">›</span></div>'+
+        '<div class="tile-b">'+body+'</div></div>';
+    });
+    document.getElementById('tiles').innerHTML = html;
+    prog();
+  }
+  function toggle(si){ var s = STEPS[si]; OPEN[s] = !OPEN[s]; document.getElementById('tl'+si).classList.toggle('open', !!OPEN[s]); }
+
+  function det(t){
+    if(!t.detail) return '';
+    return /^TBC/.test(t.detail) ? '<small class="tbc">⏳ '+KK.esc(t.detail)+'</small>' : '<small>'+KK.esc(t.detail)+'</small>';
+  }
+
+  function itemHTML(t, id){
+    var k = KK.esc(key(t)), v = V[key(t)];
+    switch(t.type){
+      case 'photo':
+        var state = !v ? '' : v.id ? '<span class="st">✓ Saved '+KK.esc(v.time||'')+'</span>' : v.failed ? '<span class="st fail">Upload failed</span>' : '<span class="st up">Uploading…</span>';
+        var action = v && v.failed && PENDING[key(t)] ? '<button type="button" data-k="'+k+'" onclick="retry(this)">↻ Retry</button>' : '<label for="f'+id+'">↺ Retake</label>';
+        return '<div class="ph"><div class="lbl">📷 '+KK.esc(t.item)+det(t)+'</div>'+
+          '<input type="file" accept="image/*" capture="environment" id="f'+id+'" data-k="'+k+'" onchange="photo(this)">'+
+          (v && v.thumb ? '<div class="shot"><img src="'+v.thumb+'" alt="'+KK.esc(t.item)+'">'+state+action+'</div>'
+             : '<label class="cam" for="f'+id+'">📸 Take photo</label>')+'</div>';
+      case 'yesno':
+        return '<div class="q"><div class="lbl">'+KK.esc(t.item)+det(t)+'</div><div class="seg">'+
+          ['Yes','No'].map(function(a){ return '<button class="'+(v===a?'on':'')+'" data-k="'+k+'" onclick="pick(this,\''+a+'\')">'+a+'</button>'; }).join('')+
+          '</div>'+(flagged(t) ? '<div class="warnbox">⚠ Tell the manager now.<input placeholder="What happened? Give details" value="'+
+          KK.esc(NOTE[key(t)]||'')+'" data-k="'+k+'" oninput="note(this)"></div>' : '')+'</div>';
+      case 'choice':
+        return '<div class="q"><div class="lbl">'+KK.esc(t.item)+det(t)+'</div><div class="seg col">'+
+          t.options.map(function(o, oi){ return '<button class="'+(v===o?'on':'')+'" data-k="'+k+'" data-o="'+oi+'" onclick="choose(this)">'+KK.esc(o)+'</button>'; }).join('')+
+          '</div>'+(flagged(t) ? '<div class="warnbox">⚠ This goes into the manager\'s report. Tell the manager too.</div>' : '')+'</div>';
+      case 'text':
+        return '<div class="q"><div class="lbl">'+KK.esc(t.item)+det(t)+'</div><input value="'+KK.esc(v||'')+'" data-k="'+k+'" oninput="txt(this)"></div>';
+      case 'stock':  return stockHTML(t);
+      case 'cash':   return cashHTML(t);
+      default:
+        return '<label class="item'+(t.critical?' crit':'')+'"><input type="checkbox" data-k="'+k+'"'+(v===true?' checked':'')+
+          ' onchange="tick(this)"><span class="box"></span><span class="it"><b>'+KK.esc(t.item)+'</b> '+
+          (t.critical?'<span class="flag">Don\'t skip</span>':'')+det(t)+'</span></label>';
+    }
+  }
+
+  function stockHTML(t){
+    var m = stockVal(t), cat = '', h = '<div class="q" style="padding-bottom:0"><div class="lbl">'+KK.esc(t.item)+det(t)+'</div></div>';
+    CFG.stock.forEach(function(s, i){
+      if(s.category !== cat){ cat = s.category; h += '<div class="scat">'+KK.esc(cat)+'</div>'; }
+      var v = m[s.category+'|'+s.item], isNA = v==='N/A', low = !isNA && v!==undefined && v!=='' && s.min!=='' && +v < +s.min;
+      h += '<div class="srow'+(low?' low':'')+'" id="sr'+i+'"><div class="sname"><b>'+KK.esc(s.item)+'</b><small id="sh'+i+'">'+
+        (s.min===''?KK.esc(s.unit):(low?'Below minimum · ':'')+'min '+KK.esc(s.min)+' '+KK.esc(s.unit))+'</small></div>'+
+        '<input type="number" inputmode="decimal" min="0" step="any" id="sq'+i+'" value="'+(isNA||v===undefined?'':KK.esc(v))+'"'+(isNA?' disabled':'')+
+        ' data-k="'+KK.esc(key(t))+'" data-i="'+i+'" oninput="count(this)" placeholder="–">'+
+        '<button type="button" class="na'+(s.na?(isNA?' on':''):' off')+'" data-k="'+KK.esc(key(t))+'" data-i="'+i+'" onclick="na(this)">N/A</button></div>';
+    });
+    return h;
+  }
+
+  function cashHTML(t){
+    var c = V[key(t)] || {}, k = KK.esc(key(t));
+    return '<div class="q"><div class="lbl">Count the cash'+det(t)+'</div>'+
+      '<p class="hint">Count all the notes and coins in the bag. A manager checks it against the day\'s sales later.</p>'+
+      '<label class="f">Cash in the bag</label><div class="money"><input type="number" inputmode="decimal" step="0.01" min="0" value="'+KK.esc(c.deposit==null?'':c.deposit)+
+      '" data-k="'+k+'" data-f="deposit" oninput="cash(this)" placeholder="0.00"></div></div>';
+  }
+  function diffLabel(d){
+    if(d===null) return '<span>Bag vs cash sales</span><b>–</b>';
+    return '<span>Bag vs cash sales: '+(d===0?'matches 🎉':Math.abs(d)<=TOL?'close enough':(d<0?'short':'over'))+'</span><b>'+(d>0?'+':'')+KK.money(d)+'</b>';
+  }
+
+  function prog(){
+    var done = 0;
+    STEPS.forEach(function(s, si){
+      var st = tileState(s);
+      if(st.done) done++;
+      document.getElementById('tl'+si).classList.toggle('fin', st.done);
+      document.getElementById('tc'+si).textContent = st.txt;
+      document.getElementById('ti'+si).innerHTML = st.thumb ? '<img src="'+st.thumb+'" alt="">' : st.done ? '✓' : '○';
+    });
+    document.getElementById('progTxt').textContent = done+' of '+STEPS.length+' done';
+    document.getElementById('barFill').style.width = (STEPS.length ? 100*done/STEPS.length : 0)+'%';
+    var b = document.getElementById('submit');
+    if(b.dataset.sure){ delete b.dataset.sure; b.textContent = TEXT.submit; }
+  }
+
+  // ---- inputs ----
+  function byKey(k){ return LIST.filter(function(t){ return key(t)===k; })[0]; }
+  function keepScroll(fn){ var y = window.scrollY; fn(); window.scrollTo(0, y); }
+  function tick(cb){ V[cb.dataset.k] = cb.checked; saveDraft(); prog(); }
+  function pick(b, a){ V[b.dataset.k] = a; saveDraft(); keepScroll(render); }
+  function choose(b){ V[b.dataset.k] = byKey(b.dataset.k).options[+b.dataset.o]; saveDraft(); keepScroll(render); }
+  function txt(inp){ V[inp.dataset.k] = inp.value; saveDraft(); prog(); }
+  function note(inp){ NOTE[inp.dataset.k] = inp.value; saveDraft(); prog(); }
+
+  // Photos upload the moment they're taken, so the server knows when each one came in.
+  function photo(inp){
+    var f = inp.files && inp.files[0]; if(!f) return;
+    var k = inp.dataset.k;
+    KK.shrink(f).then(function(full){
+      return KK.shrink(full, 320, 0.6).then(function(thumb){
+        V[k] = {thumb:thumb, uploading:true}; PENDING[k] = full;
+        keepScroll(render); upload(k);
+      });
+    }).catch(function(){ show('bad','Could not read that photo. Please take it again.'); });
+  }
+  function upload(k){
+    var t = byKey(k), w = identity();
+    V[k] = {thumb:V[k].thumb, uploading:true}; keepScroll(render);
+    KK.post('photo',{event:w.event, shift:SHIFT, step:t.step, item:t.item, photo:PENDING[k]}).then(function(r){
+      if(!r.ok){ V[k] = {thumb:V[k].thumb, failed:true}; show('bad', KK.esc(r.error||'Upload failed. Tap Retry.')); }
+      else { V[k] = {thumb:V[k].thumb, id:r.id, time:r.time}; delete PENDING[k]; }
+      saveDraft(); keepScroll(render);
+    }).catch(function(){ V[k] = {thumb:V[k].thumb, failed:true}; saveDraft(); keepScroll(render); });
+  }
+  function retry(b){ upload(b.dataset.k); }
+
+  function count(inp){
+    var t = byKey(inp.dataset.k), s = CFG.stock[+inp.dataset.i], m = stockVal(t);
+    m[s.category+'|'+s.item] = inp.value;
+    var low = inp.value!=='' && s.min!=='' && +inp.value < +s.min;
+    document.getElementById('sr'+inp.dataset.i).classList.toggle('low', low);
+    document.getElementById('sh'+inp.dataset.i).textContent = s.min==='' ? s.unit : (low?'Below minimum · ':'')+'min '+s.min+' '+s.unit;
+    saveDraft(); prog();
+  }
+  function na(b){
+    var t = byKey(b.dataset.k), i = +b.dataset.i, s = CFG.stock[i], m = stockVal(t), kk = s.category+'|'+s.item;
+    var on = m[kk] !== 'N/A';
+    m[kk] = on ? 'N/A' : '';
+    b.classList.toggle('on', on);
+    var q = document.getElementById('sq'+i); q.disabled = on; q.value = '';
+    document.getElementById('sr'+i).classList.remove('low');
+    document.getElementById('sh'+i).textContent = s.min==='' ? s.unit : 'min '+s.min+' '+s.unit;
+    saveDraft(); prog();
+  }
+  function cash(inp){
+    var t = byKey(inp.dataset.k), c = V[key(t)] || (V[key(t)] = {});
+    c[inp.dataset.f] = inp.value; saveDraft(); prog();
+  }
+
+  function show(cls, html){ document.getElementById('msg').innerHTML = '<div class="msg '+cls+'">'+html+'</div>'; }
+
+  // ---- submit ----
+  function submitList(){
+    var w = identity();
+    var open = STEPS.filter(function(s){ return !tileState(s).done; });
+    if(open.length){
+      open.forEach(function(s){ OPEN[s] = true; });
+      keepScroll(render);
+      show('bad','Still to finish:<br>• '+open.map(KK.esc).join('<br>• '));
+      document.getElementById('tl'+STEPS.indexOf(open[0])).scrollIntoView({behavior:'smooth', block:'start'});
+      return;
+    }
+    var skipped = LIST.filter(function(t){ return t.type==='tick' && shown(t) && V[key(t)]!==true; }).map(function(t){ return t.item; });
+    var b = document.getElementById('submit');
+    if(skipped.length && !b.dataset.sure){        // first tap lists blank ticks, second tap submits
+      b.dataset.sure = '1'; b.textContent = 'Submit anyway';
+      return show('warn','You left '+skipped.length+' tick(s) blank:<br>• '+skipped.map(KK.esc).join('<br>• ')+'<br>Tick them, or tap <b>Submit anyway</b>.');
+    }
+    var items = LIST.map(function(t){
+      var k = key(t), v = V[k];
+      if(t.type==='stock'){ var m = stockVal(t); v = CFG.stock.map(function(s){ var c = m[s.category+'|'+s.item]; return {category:s.category, item:s.item, count:c==='N/A'?'N/A':+c}; }); }
+      if(t.type==='photo') v = v && v.id ? {id:v.id} : null;
+      return {step:t.step, item:t.item, value:v===undefined?false:v, note:NOTE[k]||''};
+    });
+    b.disabled = true; show('warn','Saving…');
+    KK.post('checklist',{event:w.event, shift:SHIFT, items:items, notes:document.getElementById('notes').value.trim()})
+    .then(function(r){
+      if(!r.ok){ b.disabled = false; return show('bad', KK.esc(r.error||'Something went wrong. Try again.')); }
+      clearDraft(); done(w, r);
+    }).catch(function(){
+      b.disabled = false; show('bad','Could not reach the server. Check your signal and tap Submit again. Your answers and photos are still here.');
+    });
+  }
+
+  function localAlerts(){
+    var a = [];
+    LIST.forEach(function(t){
+      if(!shown(t)) return;
+      if(flagged(t)) a.push(t.item.replace(/\?$/,'')+': '+V[key(t)]+(NOTE[key(t)]?' — '+NOTE[key(t)]:''));
+      if(t.type==='stock'){ var m = stockVal(t); CFG.stock.forEach(function(s){ var v = m[s.category+'|'+s.item];
+        if(v!=='N/A' && s.min!=='' && +v < +s.min) a.push('Low stock: '+s.item+' ('+s.category.replace(/ \(.*\)/,'')+') '+v+'/'+s.min); }); }
+    });
+    return a;
+  }
+
+  function done(w, r){
+    var alerts = r.demo ? localAlerts() : (r.alerts||[]).concat((r.low||[]).length ? ['Low stock: '+r.low.join(', ')] : []);
+    document.getElementById('form').style.display = 'none';
+    var d = document.getElementById('done'); d.style.display = 'block';
+    d.innerHTML = '<div class="big">'+({Opening:'🎪', Closing:'🧹', Stock:'📦'})[SHIFT]+'</div><h2>'+TEXT.title+' submitted</h2>'+
+      '<p>'+KK.esc(U.name)+' · '+KK.esc(w.event)+' · '+KK.esc(r.time||KK.hhmm())+(r.demo?' (demo, not saved)':'')+'</p>'+
+      (alerts.length ? '<div class="msg warn">⚠ Tell the manager now:<br>• '+alerts.map(KK.esc).join('<br>• ')+'</div>' : '')+
+      (r.cashBag != null ? '<div class="msg warn">💵 You\'re now holding <b>'+KK.money(r.cashBag)+'</b> of company cash. Hand it to Rebecca, Jay or Hazel, or bank it in and upload the proof under <b>Me</b>, by <b>'+
+        new Date(r.cashDue+'T12:00').toLocaleDateString('en-SG',{weekday:'long', day:'numeric', month:'short'})+'</b>.</div>' : '')+
+      '<a class="btn" style="margin-top:16px" href="index.html">Back to the hub</a>';
+    window.scrollTo({top:0});
+  }
+</script>
+</body>
+</html>

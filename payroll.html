@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Payroll</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="kk.css">
+<style>
+  .wrap{max-width:760px}
+  .mbar{display:flex;align-items:center;gap:8px;margin-top:12px}
+  .mbar b{font-size:17px;flex:1;text-align:center}
+  .sbtn{font:inherit;font-size:13.5px;font-weight:800;border:1.5px solid var(--line);background:#fff;color:var(--pink-d);border-radius:12px;padding:9px 13px;cursor:pointer}
+  .sbtn.pri{background:var(--pink);border-color:var(--pink);color:#fff}
+  .seg{display:flex;gap:6px;margin-top:10px}
+  .seg button{flex:1;font:inherit;font-weight:800;font-size:14px;color:var(--muted);padding:10px;border-radius:12px;border:1.5px solid var(--line);background:var(--card)}
+  .seg button.on{background:var(--ink);border-color:var(--ink);color:#fff}
+  .tot{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}
+  .tot div{background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:10px;text-align:center;font-size:12px;font-weight:800;color:var(--muted)}
+  .tot b{display:block;font-size:17px;color:var(--ink);margin-top:2px;font-variant-numeric:tabular-nums}
+  .row{display:flex;align-items:center;gap:10px;padding:13px 14px;border-top:1px solid var(--line);cursor:pointer}
+  .row:first-child{border-top:0}
+  .row .m{flex:1;min-width:0;font-weight:800}
+  .row .m small{display:block;color:var(--muted);font-weight:600;font-size:12.5px}
+  .row .v{font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .st{font-size:11.5px;font-weight:800;border-radius:99px;padding:3px 9px;white-space:nowrap}
+  .st.draft{background:var(--mustard-soft);color:var(--amber)} .st.published{background:var(--ok-soft);color:var(--ok)} .st.warn{background:var(--bad-soft);color:var(--bad)}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  td{padding:7px 4px;border-top:1px solid var(--line);font-variant-numeric:tabular-nums;vertical-align:top}
+  td.r{text-align:right;white-space:nowrap}
+  .shifts{padding:0 14px 12px;background:#fffafc}
+  .fix{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:6px 0}
+  .fix input{padding:8px 10px;font-size:14px}
+  .line{display:grid;grid-template-columns:1fr 110px 34px;gap:6px;margin-top:6px}
+  .line input{padding:9px 10px;font-size:14px}
+  .line button{border:0;background:none;font-size:18px;color:var(--muted);cursor:pointer}
+  .calc{display:flex;justify-content:space-between;padding:6px 0;font-size:14.5px}
+  .calc span{color:var(--muted);font-weight:600}
+  .calc b{font-variant-numeric:tabular-nums}
+  .calc.big{border-top:1.5px solid var(--line);margin-top:4px;padding-top:10px;font-size:16px}
+  .tiny{font-size:12px;color:var(--muted);font-weight:600}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="back" href="admin.html">‹</a>
+  <div style="flex:1"><h1>Payroll</h1><div class="sub">Hours, payslips and CPF by month</div></div>
+</header>
+<main class="wrap">
+  <div class="mbar"><button class="sbtn" onclick="month(-1)">‹</button><b id="mlabel"></b><button class="sbtn" onclick="month(1)">›</button></div>
+  <div class="seg"><button id="sgH" onclick="TAB='hours';render()">⏱️ Hours</button><button id="sgP" onclick="TAB='pay';render()">💰 Payslips</button></div>
+  <div id="view"><div class="loading">Loading…</div></div>
+</main>
+<script src="kk.js"></script>
+<script>
+  var U = KK.requireLogin(['admin','manager']); if(U) KK.nav('manage');
+  var d0 = new Date(), PERIOD = d0.getFullYear()+'-'+('0'+(d0.getMonth()+1)).slice(-2), TAB = 'hours', H = null, P = null, OPEN = null, FIX = null, ED = null;
+  function money(n){ return '$'+(Number(n)||0).toFixed(2); }
+
+  function load(){
+    Promise.all([KK.post('hoursList',{period:PERIOD}), KK.post('payrollList',{period:PERIOD})]).then(function(r){ H = r[0]; P = r[1]; render(); });
+  }
+  function month(n){ var p = PERIOD.split('-').map(Number), d = new Date(p[0], p[1]-1+n, 15); PERIOD = d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2); OPEN = ED = FIX = null; load(); }
+
+  function render(){
+    document.getElementById('mlabel').textContent = H.label;
+    document.getElementById('sgH').className = TAB==='hours'?'on':''; document.getElementById('sgP').className = TAB==='pay'?'on':'';
+    TAB === 'hours' ? hours() : pay();
+  }
+
+  // ---------- hours ----------
+  function hours(){
+    var html = '<p class="tiny" style="margin-top:10px">Each shift is rounded to the nearest 15 minutes. Breaks are paid. Tap someone to see their shifts and fix a time.</p>';
+    if(!H.people.length) html += '<div class="card"><p class="hint" style="margin:0">No shifts in '+KK.esc(H.label)+'.</p></div>';
+    else html += '<div class="card" style="padding:0;overflow:hidden">'+H.people.map(function(p, i){
+      var rows = OPEN === i ? '<div class="shifts"><table>'+p.shifts.map(function(s, j){
+        var fixing = FIX === i+'_'+j;
+        return '<tr><td>'+KK.esc(s.date.slice(5))+'<div class="tiny">'+KK.esc(s.event)+'</div></td><td>'+KK.esc(s.in)+'–'+(s.out?KK.esc(s.out):'<span class="st warn">no clock-out</span>')+
+          (s.flag?'<div class="tiny" style="color:var(--amber)">'+KK.esc(s.flag)+'</div>':'')+'</td><td class="r">'+(s.out?s.paid+'h':'')+'<br><button class="sbtn" style="padding:4px 8px;font-size:12px" onclick="FIX=\''+i+'_'+j+'\';render()">Fix</button></td></tr>'+
+          (fixing ? '<tr><td colspan="3"><div class="fix"><input id="fIn" value="'+KK.esc(s.in)+'" placeholder="In 14:00"><input id="fOut" value="'+KK.esc(s.out)+'" placeholder="Out 22:05"></div>'+
+            '<input id="fWhy" placeholder="Why? e.g. forgot to clock out at 22:05" style="padding:9px 10px;font-size:14px"><div style="display:flex;gap:6px;margin-top:6px"><button class="sbtn pri" onclick="doFix('+s.row+')">Save</button><button class="sbtn" onclick="FIX=null;render()">Cancel</button></div><div id="fmsg"></div></td></tr>' : '');
+      }).join('')+'</table></div>' : '';
+      return '<div class="row" onclick="OPEN=OPEN==='+i+'?null:'+i+';FIX=null;render()"><div class="m">'+KK.esc(p.name)+'<small>'+p.shifts.length+' shift'+(p.shifts.length>1?'s':'')+'</small></div>'+
+        (p.open?'<span class="st warn">'+p.open+' open</span>':'')+'<span class="v">'+p.total+' h</span></div>'+rows;
+    }).join('')+'</div>';
+    document.getElementById('view').innerHTML = html;
+  }
+  function doFix(row){
+    KK.post('fixShift',{row:row, in:document.getElementById('fIn').value, out:document.getElementById('fOut').value, reason:document.getElementById('fWhy').value}).then(function(r){
+      if(!r.ok) return document.getElementById('fmsg').innerHTML = '<div class="msg bad">'+KK.esc(r.error)+'</div>';
+      FIX = null; load();
+    });
+  }
+
+  // ---------- payslips ----------
+  function pay(){
+    var drafts = P.payslips.filter(function(s){ return s.status === 'draft'; });
+    var html = '<div class="tot"><div>Total to pay<b>'+money(P.totals.total)+'</b></div><div>Gross wages<b>'+money(P.totals.gross)+'</b></div><div>CPF (employer)<b>'+money(P.totals.cpfEr)+'</b></div></div>';
+    var noRate = P.payslips.filter(function(s){ return s.noRate && s.status==='draft'; });
+    if(noRate.length) html += '<div class="msg warn">No pay rate for '+noRate.map(function(s){ return KK.esc(s.name); }).join(', ')+'. Set it in Manage → People.</div>';
+    html += '<p class="tiny" style="margin-top:10px">Pay period: the whole of '+KK.esc(P.label)+'. Publish by the 7th of next month. Tap a payslip to add allowances, deductions and CPF.</p>';
+    html += ED ? editor() : '';
+    html += P.payslips.length ? '<div class="card" style="padding:0;overflow:hidden">'+P.payslips.map(function(s, i){
+      return '<div class="row" onclick="openEd('+i+')"><div class="m">'+KK.esc(s.name)+'<small>'+(s.payType==='monthly'?'Monthly '+money(s.rate):s.hours+'h × '+money(s.rate))+
+        (s.claims.length?' · '+s.claims.length+' claim'+(s.claims.length>1?'s':''):'')+(s.open?' · ⚠ open shift':'')+'</small></div><span class="v">'+money(s.total)+'</span><span class="st '+s.status+'">'+s.status+'</span></div>';
+    }).join('')+'</div>' : '<div class="card"><p class="hint" style="margin:0">Nobody to pay for '+KK.esc(P.label)+' yet.</p></div>';
+    html += '<div id="pmsg"></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">'+
+      (drafts.length ? '<button class="sbtn pri" onclick="askPublish()">Publish '+drafts.length+' payslip'+(drafts.length>1?'s':'')+'</button>' : '')+
+      '<button class="sbtn" onclick="csv()">⬇ Download CSV</button></div><div id="pub"></div>';
+    document.getElementById('view').innerHTML = html;
+  }
+  function openEd(i){ var s = P.payslips[i]; ED = JSON.parse(JSON.stringify(s)); ED._i = i; render(); window.scrollTo({top:0, behavior:'smooth'}); }
+  function lines(key){
+    return ED[key].map(function(l, j){ return '<div class="line"><input value="'+KK.esc(l.label)+'" placeholder="'+(key==='allowances'?'e.g. Transport':'e.g. Uniform')+'" oninput="ED.'+key+'['+j+'].label=this.value;recalc()">'+
+      '<input type="number" step="0.01" value="'+KK.esc(l.amount)+'" placeholder="$" oninput="ED.'+key+'['+j+'].amount=this.value;recalc()"><button onclick="ED.'+key+'.splice('+j+',1);render()">×</button></div>'; }).join('')+
+      (ED.status==='draft' ? '<button class="sbtn" style="margin-top:6px;padding:6px 10px;font-size:12.5px" onclick="ED.'+key+'.push({label:\'\',amount:\'\'});render()">+ Add line</button>' : '');
+  }
+  function sum(a){ return a.reduce(function(s, x){ return s + (Number(x.amount)||0); }, 0); }
+  function figures(){ var g = ED.basic + sum(ED.allowances), n = g - sum(ED.deductions) - (Number(ED.cpfEmployee)||0); return {gross:g, net:n, total:n + sum(ED.claims)}; }
+  function recalc(){ var f = figures(); ['gross','net','total'].forEach(function(k){ var el = document.getElementById('c_'+k); if(el) el.textContent = money(f[k]); }); }
+  function editor(){
+    var s = ED, f = figures(), self = s.username === P.me && P.role !== 'admin', locked = s.status === 'published' || self;
+    return '<div class="card"><div style="display:flex;align-items:center;gap:8px"><h2 style="margin:0;flex:1">'+KK.esc(s.name)+' · '+KK.esc(s.label)+'</h2><button class="sbtn" onclick="ED=null;render()">✕</button></div>'+
+      (self ? '<div class="msg warn">An admin prepares and publishes your own payslip.</div>' : s.status==='published' ? '<div class="msg ok">Published '+KK.esc(s.payDate)+' by '+KK.esc(s.publishedBy||'')+'. It can\'t be changed. Add any correction to next month\'s payslip.</div>' : '')+
+      '<div class="calc"><span>Basic: '+(s.payType==='monthly'?'monthly salary':s.hours+'h × '+money(s.rate))+'</span><b>'+money(s.basic)+'</b></div>'+
+      '<label class="f">Allowances (added to pay)</label>'+(locked ? s.allowances.map(function(l){ return '<div class="calc"><span>'+KK.esc(l.label)+'</span><b>'+money(l.amount)+'</b></div>'; }).join('')||'<p class="tiny">None</p>' : lines('allowances'))+
+      '<div class="calc big"><span>Gross pay</span><b id="c_gross">'+money(f.gross)+'</b></div>'+
+      '<label class="f">Deductions</label>'+(locked ? s.deductions.map(function(l){ return '<div class="calc"><span>'+KK.esc(l.label)+'</span><b>−'+money(l.amount)+'</b></div>'; }).join('')||'<p class="tiny">None</p>' : lines('deductions'))+
+      '<div class="row2"><div><label class="f">CPF employee (deducted)</label><input type="number" step="0.01" value="'+KK.esc(s.cpfEmployee||'')+'" '+(locked?'disabled':'')+' oninput="ED.cpfEmployee=this.value;recalc()" placeholder="$0.00"></div>'+
+      '<div><label class="f">CPF employer</label><input type="number" step="0.01" value="'+KK.esc(s.cpfEmployer||'')+'" '+(locked?'disabled':'')+' oninput="ED.cpfEmployer=this.value" placeholder="$0.00"></div></div>'+
+      '<p class="tiny">Enter CPF from the CPF Board calculator. Leave 0 for staff who don\'t contribute (e.g. not a citizen or PR).</p>'+
+      '<div class="calc big"><span>Net pay</span><b id="c_net">'+money(f.net)+'</b></div>'+
+      (s.claims.length ? '<label class="f">Expense claims (reimbursed)</label>'+s.claims.map(function(c){ return '<div class="calc"><span>'+KK.esc(c.label)+'</span><b>'+money(c.amount)+'</b></div>'; }).join('') : '')+
+      '<div class="calc big"><span>Total to pay '+KK.esc(s.name)+'</span><b id="c_total">'+money(f.total)+'</b></div>'+
+      '<label class="f">Note on payslip (optional)</label><input value="'+KK.esc(s.notes)+'" '+(locked?'disabled':'')+' oninput="ED.notes=this.value">'+
+      '<div id="emsg"></div>'+(locked ? '' : '<div style="display:flex;gap:8px;margin-top:12px"><button class="sbtn pri" onclick="saveEd()">Save draft</button><button class="sbtn" onclick="ED=null;render()">Cancel</button></div>')+'</div>';
+  }
+  function saveEd(){
+    KK.post('payslipSave',{period:PERIOD, username:ED.username, allowances:ED.allowances, deductions:ED.deductions, cpfEmployee:ED.cpfEmployee, cpfEmployer:ED.cpfEmployer, notes:ED.notes})
+      .then(function(r){ if(!r.ok) return document.getElementById('emsg').innerHTML = '<div class="msg bad">'+KK.esc(r.error)+'</div>'; ED = null; load(); });
+  }
+  function askPublish(){
+    document.getElementById('pub').innerHTML = '<div class="card"><h2>Publish '+KK.esc(P.label)+' payslips?</h2><p class="hint">Staff will see them under Me → Payslips, and the expense claims on them will be marked paid. Published payslips can\'t be edited.</p>'+
+      '<div style="display:flex;gap:8px"><button class="sbtn pri" onclick="publish()">Publish</button><button class="sbtn" onclick="document.getElementById(\'pub\').innerHTML=\'\'">Not yet</button></div></div>';
+    document.getElementById('pub').scrollIntoView({behavior:'smooth'});
+  }
+  function publish(){
+    KK.post('payrollPublish',{period:PERIOD}).then(function(r){
+      load(); setTimeout(function(){ document.getElementById('pmsg').innerHTML = '<div class="msg '+(r.skipped&&r.skipped.length?'warn':'ok')+'">Published '+r.published+'.'+(r.skipped&&r.skipped.length?' Not published: '+r.skipped.map(KK.esc).join('; ')+'.':'')+'</div>'; }, 500);
+    });
+  }
+  function csv(){
+    var head = ['Period','Name','Username','Pay type','Rate','Hours','Basic','Allowances','Gross','Deductions','CPF employee','CPF employer','Net','Reimbursed claims','Total to pay','Status'];
+    var rows = P.payslips.map(function(s){ return [s.period, s.name, s.username, s.payType, s.rate, s.hours, s.basic, sum(s.allowances), s.gross, sum(s.deductions), s.cpfEmployee, s.cpfEmployer, s.net, sum(s.claims), s.total, s.status]; });
+    var text = [head].concat(rows).map(function(r){ return r.map(function(v){ v = String(v); return /[",\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; }).join(','); }).join('\n');
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], {type:'text/csv'})); a.download = 'KK payroll '+PERIOD+'.csv'; document.body.appendChild(a); a.click(); a.remove();
+    try{ navigator.clipboard.writeText(text); }catch(e){}
+    document.getElementById('pmsg').innerHTML = '<div class="msg ok">CSV downloaded (and copied, in case your phone blocks downloads).</div>';
+  }
+  if(U) load();
+</script>
+</body>
+</html>

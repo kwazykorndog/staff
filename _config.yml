@@ -1,0 +1,3 @@
+# GitHub Pages: serve the files as they are (no Jekyll processing), and keep the README off the site
+include: [Code.gs]
+exclude: [README.md]

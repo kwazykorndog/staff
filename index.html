@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Kwazy Korndog Staff</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="kk.css">
+<style>
+  .bar{display:flex;align-items:center;gap:10px;padding-top:calc(16px + env(safe-area-inset-top))}
+  .bar .logo{height:46px;width:auto;display:block}
+  .brandline{display:flex;align-items:center;gap:8px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;font-size:12.5px;color:var(--muted)}
+  .brandline span{font-size:20px;letter-spacing:0}
+  .avatar{margin-left:auto;width:44px;height:44px;border-radius:99px;background:var(--pink-soft);border:1.5px solid #f3c9d9;display:flex;align-items:center;
+    justify-content:center;font-weight:900;color:var(--pink-d);text-decoration:none;font-size:17px}
+  .hello{font-family:'Baloo 2',sans-serif;font-size:34px;font-weight:800;line-height:1.05;margin-top:16px}
+  .role{color:var(--muted);font-weight:600;margin-top:4px}
+
+  .hero{margin-top:18px;border-radius:24px;padding:20px;background:#3b1d2b;color:#fff;box-shadow:0 18px 30px -18px rgba(59,29,43,.8)}
+  .hero.stop{background:#8f2318}
+  .hero .tag{font-size:11.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.75}
+  .hero .tt{font-family:'Baloo 2',sans-serif;font-size:30px;font-weight:800;line-height:1.1;margin-top:6px}
+  .hero .ds{opacity:.85;margin-top:4px;font-size:14.5px}
+  .hero .go{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:16px;width:100%;border:0;border-radius:16px;padding:16px;
+    background:#fff;color:#3b1d2b;font:inherit;font-size:17px;font-weight:800;text-decoration:none;cursor:pointer}
+  .hero.stop .go{color:#8f2318}
+  .hero .go svg{width:22px;height:22px}
+
+  .panel{margin-top:16px;background:var(--card);border:1.5px solid var(--line);border-radius:22px;padding:6px 18px}
+  .panel h2{display:flex;align-items:center;gap:8px;font-size:20px;margin:12px 0 4px}
+  .cnt{min-width:24px;height:24px;border-radius:99px;background:#a8452f;color:#fff;font-size:12.5px;font-weight:900;display:inline-flex;align-items:center;justify-content:center;padding:0 7px}
+  a.need{display:flex;gap:12px;padding:13px 0;border-top:1px solid var(--line);text-decoration:none;color:inherit}
+  a.need:first-of-type{border-top:0}
+  a.need .dot{width:9px;height:9px;border-radius:99px;background:#a8452f;margin-top:6px;flex-shrink:0}
+  a.need b{display:block;font-size:15.5px}
+  a.need small{display:block;color:var(--muted);font-weight:600;font-size:13px;margin-top:2px}
+  .calm{color:var(--muted);font-weight:600;padding:8px 0 14px}
+
+  .step{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line);text-decoration:none;color:inherit}
+  .step.off{opacity:.45;pointer-events:none}
+  .step .si{width:34px;height:34px;border-radius:11px;background:var(--pink-soft);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+  .step.fin .si{background:var(--ok-soft)}
+  .step .st{flex:1;min-width:0}
+  .step .st b{display:block;font-size:15px}
+  .step .st small{display:block;font-size:12.5px;color:var(--muted);font-weight:600}
+  .chip{font-size:11.5px;font-weight:800;border-radius:99px;padding:3px 9px;white-space:nowrap;background:#f6eff2;color:var(--muted)}
+  .chip.ok{background:var(--ok-soft);color:var(--ok)} .chip.todo{background:var(--pink-soft);color:var(--pink-d)} .chip.lock{background:var(--mustard-soft);color:var(--amber)}
+  #stopPanel textarea{min-height:64px;margin-top:8px}
+  .wk{display:flex;align-items:center;gap:12px;padding:9px 0;border-top:1px solid var(--line)}
+  .wk:first-of-type{border-top:0}
+  .wk .wd{width:52px;flex-shrink:0;font-weight:800;font-size:14px}
+  .wk .wd small{display:block;font-weight:600;font-size:11.5px;color:var(--muted)}
+  .wk.today .wd{color:var(--pink-d)}
+  .wk .ws{flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:6px}
+  .wchip{font-size:12.5px;font-weight:800;border-radius:10px;padding:5px 9px}
+  .wchip.sb{border:1.5px dashed #cdb9c2;color:var(--muted)}
+  .wk .off{color:#cdb9c2;font-weight:700;font-size:13px}
+  .onsite{font-size:12.5px;color:var(--muted);font-weight:600;padding:4px 0 12px}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="bar"><img class="logo" src="logo.png" alt="Kwazy Korndog"><a class="avatar" id="avatar" href="me.html"></a></div>
+  <div class="hello" id="hello"></div>
+  <div class="role" id="role"></div>
+  <div id="cashFlag"></div>
+  <div id="heroBox"></div>
+  <div id="stopPanel"></div>
+  <div id="shiftBox"></div>
+  <div id="weekBox"></div>
+  <div id="needBox"></div>
+  <div id="liveBox"></div>
+  <div id="msg"></div>
+</main>
+
+<script src="kk.js"></script>
+<script>
+  var U = KK.requireLogin(), ME = null, S = null, M = {}, TODAY = [];
+  var CLOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+
+  if(U){
+    KK.nav('today');
+    document.getElementById('avatar').textContent = U.name.charAt(0).toUpperCase();
+    document.getElementById('hello').textContent = 'Hi ' + U.name;
+    document.getElementById('role').textContent = ({admin:'Admin', manager:'Manager', crew:'Crew'})[U.role] + ' · ' + KK.today();
+  }
+
+  function hero(o){
+    var go = o.href ? '<a class="go" href="'+o.href+'">'+(o.icon||'')+o.btn+'</a>' : o.onclick ? '<button class="go" onclick="'+o.onclick+'">'+(o.icon||'')+o.btn+'</button>' : '';
+    return '<div class="hero'+(o.cls?' '+o.cls:'')+'"><div class="tag">'+o.tag+'</div><div class="tt">'+o.title+'</div><div class="ds">'+o.sub+'</div>'+go+'</div>';
+  }
+  function step(href, icon, title, sub, chip, cls, onclick){
+    return '<a class="step '+(cls||'')+'" href="'+href+'"'+(onclick?' onclick="'+onclick+';return false"':'')+'><span class="si">'+icon+
+      '</span><span class="st"><b>'+title+'</b><small>'+sub+'</small></span>'+chip+'</a>';
+  }
+  function chip(text, cls){ return '<span class="chip '+(cls||'')+'">'+KK.esc(text)+'</span>'; }
+
+  function render(){
+    var hb = document.getElementById('heroBox'), sb = document.getElementById('shiftBox');
+    if(!ME || !S || !S.clockedIn){
+      // Not on shift: just the big clock-in card. The shift steps appear once you're clocked in.
+      var next = TODAY.filter(function(t){ return t.type==='shift'; })[0];
+      hb.innerHTML = hero({ tag: next ? 'Today · '+KK.esc(next.event)+' '+KK.esc(next.start)+'–'+KK.esc(next.end)
+                                     : TODAY.length ? 'Today · on standby'+(TODAY[0].note?' ('+KK.esc(TODAY[0].note)+')':'') : 'Today · no shift on your roster',
+        title:'Clock in / out', sub: next ? 'At the booth? Clock in with today\'s selfie check.' : 'Covering a shift? You can still clock in.',
+        href:'clock.html', btn:'Clock in', icon:CLOCK });
+      sb.innerHTML = '';
+    } else {
+      var stopped = !!S.stopSale, closed = !!(S.stock && S.closing), tag = 'On shift · '+KK.esc(ME.event)+' since '+KK.esc(S.clockedIn);
+      var lead = (S.leadOnSite && S.leadOnSite.length ? S.leadOnSite : S.leads || []).join(' & ');
+      if(!S.myDuty) hb.innerHTML = hero({tag:tag, title:'You\'re on crew today 🌭', sub:'⭐ '+KK.esc(lead)+' is in charge of the checklist. You help set up, sell and pack down, then clock out when you\'re done.',
+        href:'clock.html', btn:'Clock out when you leave', icon:CLOCK});
+      else if(!S.opening) hb.innerHTML = hero({tag:tag, title:'Opening evidence', sub:'Done your opening tasks? Add the photos, any order.', href:'checklist.html?shift=Opening', btn:'Upload opening evidence'});
+      else if(!stopped) hb.innerHTML = S.unlocked
+        ? hero({tag:tag, title:'Stop sale', sub:'Tap when you stop serving. The closing clock starts.', onclick:'askStop()', btn:'🛑 Stop sale', cls:'stop'})
+        : hero({tag:tag, title:'Keep frying! 🌭', sub:'Stop sale opens at '+KK.esc(S.unlockAt)+'.'});
+      else if(!S.stock) hb.innerHTML = hero({tag:tag, title:'Stock take', sub:'Cleaned down? Count what\'s left.', href:'checklist.html?shift=Stock', btn:'Do the stock take'});
+      else if(!S.closing) hb.innerHTML = hero({tag:tag, title:'Closing evidence', sub:'Photos, cash check, final booth.', href:'checklist.html?shift=Closing', btn:'Upload closing evidence'});
+      else hb.innerHTML = hero({tag:tag, title:'All closed 🎉', sub:'Selfie and you\'re done. Thank you!', href:'clock.html', btn:'Clock out', icon:CLOCK});
+
+      var later = stopped ? '' : 'off';
+      sb.innerHTML = '<div class="panel"><h2>'+(S.myDuty ? 'Today\'s checklist'+(S.iAmLead?' <span class="chip todo">⭐ You\'re in charge</span>':'') : 'Checklist · ⭐ '+KK.esc(lead)+' in charge')+'</h2>'+
+        step('#','⏱️','Clock in','In at '+KK.esc(S.clockedIn)+(S.roster?' · shift '+KK.esc(S.roster):''), chip('✓ Done','ok'), 'fin off') +
+        step('checklist.html?shift=Opening','📸','Opening evidence', S.opening ? 'By '+KK.esc(S.opening.by) : 'Photos of your opening tasks',
+          S.opening ? chip('✓ '+S.opening.time,'ok') : chip('To do','todo'), S.opening ? 'fin' : '') +
+        (stopped
+          ? step('#','🛑','Stop sale','By '+KK.esc(S.stopSale.by)+(S.stopSale.reason?' · early: '+KK.esc(S.stopSale.reason):''), chip('✓ '+S.stopSale.time,'ok'), 'fin off')
+          : step('#','🛑','Stop sale', S.unlockAt ? 'From '+KK.esc(S.unlockAt)+(S.unlocked?'':' · earlier needs a reason') : 'Tap when you stop serving',
+              S.unlocked ? chip('Now','todo') : chip(S.unlockAt,'lock'), '', 'askStop()')) +
+        step('checklist.html?shift=Stock','📦','Stock take', S.stock ? 'By '+KK.esc(S.stock.by) : stopped ? 'Count what\'s left' : 'After stop sale',
+          S.stock ? chip('✓ '+S.stock.time,'ok') : chip(stopped?'To do':'Later', stopped?'todo':''), S.stock ? 'fin' : later) +
+        step('checklist.html?shift=Closing','🧹','Closing evidence', S.closing ? 'By '+KK.esc(S.closing.by) : stopped ? 'Photos, oil, cash, final booth' : 'After stop sale',
+          S.closing ? chip('✓ '+S.closing.time,'ok') : chip(stopped?'To do':'Later', stopped?'todo':''), S.closing ? 'fin' : later) +
+        step('clock.html','👋','Clock out', S.last && !closed ? 'You\'re the last one here. Finish closing first.' : 'Selfie when you leave',
+          S.last && !closed ? chip('🔒 Closing first','lock') : chip('Anytime',''), '') +
+        (S.onSite && S.onSite.length ? '<div class="onsite">On site now: '+KK.esc(S.onSite.join(', '))+'</div>' : '')+'</div>';
+    }
+    needs();
+  }
+
+  function dayName(d){ return new Date(d+'T12:00').toLocaleDateString('en-SG',{weekday:'short', day:'numeric', month:'short'}); }
+  function daysLeft(d){ var t = new Date(KK.ymd()+'T12:00'), x = new Date(d+'T12:00'); return Math.round((x - t) / 864e5); }
+  // Things waiting for this person. Cash comes first, in red, until it's handed over or banked.
+  function needs(){
+    var list = [], c = M.myCash, flag = '';
+    if(c && c.count){
+      var left = daysLeft(c.due);
+      flag = c.overdue
+        ? '<a class="redflag over" href="me.html#cash"><span class="ic">🚨</span><span><b>OVERDUE: you\'re holding '+KK.money(c.holding)+' of company cash</b><small>It was due '+dayName(c.due)+' ('+c.overdue+' day'+(c.overdue>1?'s':'')+' late). Hand it to Rebecca, Jay or Hazel, or bank it in today.</small></span><span class="go">›</span></a>'
+        : '<a class="redflag'+(left>1?' soon':'')+'" href="me.html#cash"><span class="ic">💵</span><span><b>You\'re holding '+KK.money(c.holding)+' of company cash</b><small>Hand it to a manager or bank it in by <b style="display:inline;font-size:inherit">'+dayName(c.due)+'</b> ('+(left<=0?'today':left===1?'tomorrow':left+' days left')+').</small></span><span class="go">›</span></a>';
+    }
+    if(M.cash && M.cash.overdue && M.cash.overdue.length) flag += M.cash.overdue.map(function(o){
+      return '<a class="redflag over" href="cash.html"><span class="ic">🚨</span><span><b>'+KK.esc(o.name)+' has had '+KK.money(o.amount)+' cash for too long</b><small>From '+KK.esc(o.event)+' on '+dayName(o.date)+'. '+o.days+' day'+(o.days>1?'s':'')+' overdue. Chase it today.</small></span><span class="go">›</span></a>'; }).join('');
+    if(c && c.queries) flag += '<a class="redflag soon" href="me.html#cash"><span class="ic">❓</span><span><b>Question about your cash count</b><small>The cash you counted doesn\'t match the day\'s sales. Tell the manager what happened.</small></span><span class="go">›</span></a>';
+    document.getElementById('cashFlag').innerHTML = flag;
+    if(M.cash && M.cash.toCheck) list.push(['cash.html?tab=check', M.cash.toCheck+' closing'+(M.cash.toCheck>1?'s':'')+' to check against HitPay', 'Enter the day\'s HitPay totals; the app compares cash sales with the cash in the bag']);
+    if(c && c.pending) list.push(['me.html#cash', KK.money(c.pending)+' you banked is waiting to be checked', 'A manager will confirm it against the bank']);
+    if(M.cash && M.cash.toVerify) list.push(['cash.html?tab=verify', M.cash.toVerify+' crew deposit'+(M.cash.toVerify>1?'s':'')+' to verify', 'Check the slip or transfer against the bank']);
+    if(M.unreadNotices) list.push(['notices.html', M.unreadNotices+' new notice'+(M.unreadNotices>1?'s':''), 'From Jay, Hazel or Rebecca']);
+    if(M.handbookToRead) list.push(['handbook.html', M.handbookToRead+' handbook section'+(M.handbookToRead>1?'s':'')+' to read', 'New or updated. Open each and tap Got it.']);
+    if(M.restock) list.push(['stock.html', M.restock+' event'+(M.restock>1?'s':'')+' need restocking', 'See what to send, and copy the order for WhatsApp']);
+    if(M.cash && M.cash.toReceive) list.push(['cash.html', M.cash.toReceive+' cash bag'+(M.cash.toReceive>1?'s':'')+' to receive', 'Tap Received when the closer hands it over']);
+    else if(M.cash && M.cash.notBanked) list.push(['cash.html', '$'+M.cash.notBanked.toFixed(2)+' cash not banked yet', 'Bank it and upload the deposit slip']);
+    if(M.pendingClaims) list.push(['claims.html?tab=todo', M.pendingClaims+' expense claim'+(M.pendingClaims>1?'s':'')+' to approve', 'Check the receipt, then approve or reject']);
+    document.getElementById('needBox').innerHTML = '<div class="panel"><h2>Needs you '+(list.length?'<span class="cnt">'+list.length+'</span>':'')+'</h2>'+
+      (list.length ? list.map(function(n){ return '<a class="need" href="'+n[0]+'"><span class="dot"></span><span><b>'+KK.esc(n[1])+'</b><small>'+KK.esc(n[2])+'</small></span></a>'; }).join('')
+                   : '<div class="calm">All caught up 🎉</div>')+'</div>';
+  }
+
+  // ---- your next 7 days ----
+  function week(){
+    Promise.all([KK.post('myShifts'), KK.config()]).then(function(r){
+      var m = r[0], col = {}; if(!m.ok) return;
+      (r[1].events||[]).forEach(function(e){ col[e.name] = e.colour; });
+      var rows = '', d = new Date(); d.setHours(12);
+      for(var i = 0; i < 7; i++){
+        var day = d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
+        var mine = m.upcoming.filter(function(s){ return s.date === day; });
+        rows += '<div class="wk'+(i===0?' today':'')+'"><div class="wd">'+(i===0?'Today':d.toLocaleDateString('en-SG',{weekday:'short'}))+'<small>'+d.toLocaleDateString('en-SG',{day:'numeric', month:'short'})+'</small></div><div class="ws">'+
+          (mine.length ? mine.map(function(s){
+            return s.type === 'standby' ? '<span class="wchip sb">🕐 Standby'+(s.note?' · '+KK.esc(s.note):'')+'</span>'
+              : '<span class="wchip" style="'+KK.colour(col[s.event])+'">'+(s.lead?'⭐ ':'')+KK.esc(s.event)+' · '+KK.esc(s.start)+'–'+KK.esc(s.end)+'</span>'; }).join('')
+            : '<span class="off">Off</span>')+'</div></div>';
+        d.setDate(d.getDate()+1);
+      }
+      document.getElementById('weekBox').innerHTML = '<div class="panel"><h2 style="justify-content:space-between">Your week <a href="me.html" style="font-size:13px;color:var(--pink-d);text-decoration:none">All shifts ›</a></h2>'+rows+'<div style="height:8px"></div></div>';
+    });
+  }
+
+  // ---- managers/admins: who's on shift today, who's in charge, who's on standby ----
+  function live(){
+    if(!KK.isMgr(U)) return;
+    KK.post('live').then(function(r){
+      if(!r.ok) return;
+      var html = '<div class="panel"><h2 style="justify-content:space-between">Live today <a href="live.html" style="font-size:13px;color:var(--pink-d);text-decoration:none">Open ›</a></h2>';
+      if(!r.events.length) html += '<div class="calm">Nobody rostered or clocked in today.</div>';
+      r.events.forEach(function(ev){
+        var p = ev.progress;
+        html += '<div style="margin:10px 0 4px;display:flex;align-items:center;gap:8px"><span class="chip" style="'+KK.colour(ev.colour)+'">'+KK.esc(ev.event)+'</span>'+
+          '<small style="color:var(--muted);font-weight:700">'+(p.closing?'Closed '+KK.esc(p.closing):p.stopSale?'Closing since '+KK.esc(p.stopSale):p.opening?'Open':'Not opened yet')+'</small></div>'+
+          ev.crew.map(function(c){
+            var st = {on:'chip ok', missing:'chip lock', left:'chip', due:'chip todo'}[c.state] || 'chip';
+            return '<div class="step" style="padding:8px 0"><span class="st"><b>'+(c.lead?'⭐ ':'')+KK.esc(c.name)+'</b><small>'+KK.esc(c.roster)+'</small></span><span class="'+st+'"'+(c.state==='missing'?' style="background:var(--bad-soft);color:var(--bad)"':'')+'>'+KK.esc(c.text)+'</span></div>';
+          }).join('');
+      });
+      if(r.standby.length) html += '<div style="margin-top:10px;font-weight:800;font-size:13px">Backup (standby): <span style="font-weight:600;color:var(--muted)">'+
+        r.standby.map(function(s){ return KK.esc(s.name)+(s.note?' ('+KK.esc(s.note)+')':''); }).join(', ')+'</span></div>';
+      document.getElementById('liveBox').innerHTML = html + '<div style="height:10px"></div></div>';
+    });
+  }
+
+  // ---- stop sale (confirmation built into the page) ----
+  function askStop(){
+    var p = document.getElementById('stopPanel');
+    p.innerHTML = '<div class="card"><h2>🛑 Stop sale now?</h2>'+
+      (S.unlocked ? '<p class="hint">This records '+KK.esc(KK.hhmm())+' as the time you stopped serving. The closing clock starts now.</p>'
+        : '<div class="msg warn" style="margin-top:4px">Stop sale is from '+KK.esc(S.unlockAt)+'. Stopping now needs a reason, and the manager will see it.</div>'+
+          '<textarea id="stopReason" placeholder="Why stop early? e.g. Rain, sold out, organiser closed the event"></textarea>')+
+      '<div class="row2" style="margin-top:12px"><button class="btn ghost" onclick="cancelStop()">Not yet</button>'+
+      '<button class="btn" id="stopBtn" style="background:#e23d2e" onclick="doStop()">Stop sale</button></div><div id="stopMsg"></div></div>';
+    p.scrollIntoView({behavior:'smooth', block:'center'});
+  }
+  function cancelStop(){ document.getElementById('stopPanel').innerHTML = ''; }
+  function doStop(){
+    var r = document.getElementById('stopReason'), reason = r ? r.value.trim() : '', m = document.getElementById('stopMsg');
+    if(r && !reason) return m.innerHTML = '<div class="msg bad">Give a reason for stopping early.</div>';
+    var b = document.getElementById('stopBtn'); b.disabled = true;
+    KK.post('stopSale',{event:ME.event, reason:reason}).then(function(res){
+      if(!res.ok){ b.disabled = false; return m.innerHTML = '<div class="msg bad">'+KK.esc(res.error)+'</div>'; }
+      cancelStop(); refresh();
+    }).catch(function(){ b.disabled = false; m.innerHTML = '<div class="msg bad">Could not reach the server. Try again.</div>'; });
+  }
+
+  function refresh(){
+    if(!U) return;
+    KK.post('me').then(function(m){
+      if(!m.ok) throw new Error(m.error);
+      M = m; TODAY = m.today || []; KK.setCounts(m); live(); week();
+      ME = m.clockedIn; KK.clockIn(ME);
+      if(!ME){ S = null; render(); return; }
+      return KK.post('status',{event:ME.event}).then(function(res){
+        if(!res.ok){ document.getElementById('msg').innerHTML = '<div class="msg bad">'+KK.esc(res.error)+'</div>'; return; }
+        S = res; document.getElementById('msg').innerHTML = ''; render();
+      });
+    }).catch(function(){
+      document.getElementById('msg').innerHTML = '<div class="msg bad">Could not reach the server. Check your signal and pull down to refresh.</div>';
+      render();
+    });
+  }
+  if(U){ render(); refresh(); setInterval(function(){ if(!document.hidden && !document.getElementById('stopPanel').innerHTML) refresh(); }, 60000); }
+</script>
+</body>
+</html>

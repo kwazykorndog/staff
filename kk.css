@@ -1,0 +1,103 @@
+/* Kwazy Korndog staff tools — shared look. Pink, bright, cute. Phone first. */
+:root{
+  --ink:#2a1a22; --muted:#8f7f87; --line:#f1e2e9; --bg:#fff8fb; --card:#fff;
+  --pink:#ff4f8b; --pink-d:#e0306f; --pink-soft:#ffe6ef;
+  --mustard:#ffc23d; --mustard-soft:#fff3d4; --amber:#a86400;
+  --ok:#1b8f61; --ok-soft:#e2f5ec; --bad:#d23349; --bad-soft:#fde8eb;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:var(--ink);
+  background:var(--bg);font-size:16px;line-height:1.4;min-height:100vh}
+h1,h2,.brand{font-family:'Baloo 2',-apple-system,BlinkMacSystemFont,sans-serif}
+.wrap{max-width:540px;margin:0 auto;padding:0 16px 60px}
+
+/* top bar */
+.top{max-width:540px;margin:0 auto;padding:18px 16px 6px;padding-top:calc(16px + env(safe-area-inset-top));
+  display:flex;align-items:center;gap:12px}
+.top a.back{width:38px;height:38px;border-radius:12px;border:1.5px solid var(--line);background:var(--card);
+  display:flex;align-items:center;justify-content:center;text-decoration:none;color:var(--ink);font-size:20px;font-weight:800;flex-shrink:0}
+.top h1{font-size:23px;font-weight:800;line-height:1.05}
+.top .sub{font-size:12.5px;color:var(--muted);font-weight:600}
+
+.demo{background:var(--mustard-soft);color:var(--amber);font-size:12.5px;font-weight:800;text-align:center;padding:7px 12px}
+
+/* cards & fields */
+.card{background:var(--card);border:1.5px solid var(--line);border-radius:18px;padding:16px;margin-top:14px}
+.card h2{font-size:17px;font-weight:800;margin-bottom:8px}
+label.f{display:block;font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:12px 0 5px}
+label.f:first-child{margin-top:0}
+select,input,textarea{width:100%;font:inherit;font-size:16px;color:var(--ink);background:#fff;border:1.5px solid var(--line);
+  border-radius:12px;padding:12px 13px;outline:none;-webkit-appearance:none;appearance:none}
+select{background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);
+  background-position:calc(100% - 18px) 52%,calc(100% - 13px) 52%;background-size:5px 5px;background-repeat:no-repeat;padding-right:34px}
+select:focus,input:focus,textarea:focus{border-color:var(--pink)}
+textarea{min-height:80px;resize:vertical}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hint{font-size:12.5px;color:var(--muted);margin-top:5px}
+
+/* buttons */
+.btn{display:block;width:100%;border:0;border-radius:16px;padding:16px;font:inherit;font-size:17px;font-weight:800;
+  background:var(--pink);color:#fff;text-align:center;text-decoration:none;box-shadow:0 10px 22px -12px rgba(224,48,111,.8)}
+.btn:active{transform:scale(.99)}
+.btn:disabled{background:#e9d9e0;color:#fff;box-shadow:none}
+.btn.ghost{background:var(--card);color:var(--pink-d);border:1.5px solid var(--line);box-shadow:none}
+.btn + .btn{margin-top:10px}
+
+/* collapsible sections */
+.sec{background:var(--card);border:1.5px solid var(--line);border-radius:18px;margin-top:12px;overflow:hidden}
+.sec-head{display:flex;align-items:center;gap:10px;padding:14px 16px;cursor:pointer;user-select:none}
+.sec-name{flex:1;font-weight:800;font-size:15.5px}
+.sec-count{font-size:12px;font-weight:800;color:var(--pink-d);background:var(--pink-soft);border-radius:99px;padding:2px 9px}
+.chev{color:var(--muted);font-weight:800;transition:transform .15s}
+.sec.open .chev{transform:rotate(90deg)}
+.sec-body{display:none;border-top:1.5px solid var(--line)}
+.sec.open .sec-body{display:block}
+
+/* amber "don't skip" flag */
+.flag{display:inline-block;font-size:10.5px;font-weight:900;color:var(--amber);background:var(--mustard-soft);
+  border-radius:99px;padding:2px 8px;text-transform:uppercase;letter-spacing:.04em;vertical-align:1px}
+
+/* result / alerts */
+.msg{border-radius:14px;padding:13px 14px;font-weight:700;font-size:14.5px;margin-top:14px}
+.msg.ok{background:var(--ok-soft);color:var(--ok)}
+.msg.bad{background:var(--bad-soft);color:var(--bad)}
+.msg.warn{background:var(--mustard-soft);color:var(--amber)}
+.loading{text-align:center;color:var(--muted);font-weight:700;padding:50px 20px}
+.done{text-align:center;padding:30px 10px}
+.done .big{font-size:56px}
+.done h2{font-size:24px;margin-top:6px}
+.done p{color:var(--muted);margin-top:6px}
+.demo a{color:inherit}
+
+/* rich text (notices, handbook) */
+.rich{font-size:15px;line-height:1.55}
+.rich p{margin:0 0 10px}
+.rich ul,.rich ol{margin:0 0 10px 22px;padding:0}
+.rich li{margin:4px 0}
+.badge{display:inline-flex;min-width:20px;height:20px;padding:0 6px;border-radius:99px;background:var(--pink);color:#fff;font-size:11.5px;font-weight:900;align-items:center;justify-content:center;margin-left:4px}
+
+/* bottom tab bar */
+body.has-tabbar{padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:50;background:#fff;border-top:1px solid var(--line);display:flex;justify-content:center;
+  padding:6px 6px calc(6px + env(safe-area-inset-bottom));box-shadow:0 -6px 18px -12px rgba(42,26,34,.25)}
+.tabbar a{flex:1;max-width:120px;display:flex;flex-direction:column;align-items:center;gap:2px;text-decoration:none;color:var(--muted);
+  font-size:12px;font-weight:800;padding:5px 0 3px;position:relative}
+.tabbar a.on{color:var(--ink)}
+.tabbar a.on::after{content:'';width:5px;height:5px;border-radius:99px;background:var(--pink);margin-top:2px}
+.tabbar .ic{position:relative;display:block;width:27px;height:27px}
+.tabbar svg{width:27px;height:27px}
+.tabbar a.on svg{stroke:var(--pink-d)}
+.tabbar .nb{position:absolute;top:-5px;left:17px;min-width:19px;height:19px;padding:0 5px;border-radius:99px;background:var(--pink);color:#fff;
+  font-size:11px;font-weight:900;display:none;align-items:center;justify-content:center;line-height:19px;text-align:center;border:2px solid #fff}
+
+/* cash red flag: the most important pending action */
+a.redflag{display:flex;gap:12px;align-items:flex-start;margin-top:16px;padding:16px;border-radius:20px;text-decoration:none;color:#fff;background:#c81e3a;
+  box-shadow:0 14px 26px -14px rgba(200,30,58,.9)}
+a.redflag.soon{background:#fff;color:var(--ink);border:2px solid #c81e3a;box-shadow:none}
+a.redflag .ic{font-size:28px;line-height:1}
+a.redflag b{display:block;font-size:17px;line-height:1.25}
+a.redflag small{display:block;font-size:13.5px;font-weight:600;opacity:.92;margin-top:3px}
+a.redflag .go{margin-left:auto;align-self:center;font-weight:900;font-size:22px}
+a.redflag.over{animation:kkpulse 1.6s ease-in-out infinite}
+@keyframes kkpulse{0%,100%{box-shadow:0 0 0 0 rgba(200,30,58,.55)}50%{box-shadow:0 0 0 10px rgba(200,30,58,0)}}
+@media (prefers-reduced-motion:reduce){a.redflag.over{animation:none}}

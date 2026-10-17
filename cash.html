@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Cash</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="kk.css">
+<style>
+  .wrap{max-width:760px}
+  .big{background:#3b1d2b;color:#fff;border-radius:22px;padding:18px;margin-top:12px}
+  .big .l{font-size:11.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;opacity:.75}
+  .big .v{font-family:'Baloo 2',sans-serif;font-size:36px;font-weight:800;line-height:1.1}
+  .big .h{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .big .h span{background:rgba(255,255,255,.14);border-radius:99px;padding:4px 10px;font-size:13px;font-weight:700}
+  .seg{display:flex;gap:6px;margin-top:12px}
+  .seg button{flex:1;font:inherit;font-weight:800;font-size:13.5px;color:var(--muted);padding:10px 6px;border-radius:12px;border:1.5px solid var(--line);background:var(--card)}
+  .seg button.on{background:var(--ink);border-color:var(--ink);color:#fff}
+  .bag{background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:14px;margin-top:10px}
+  .bag .top2{display:flex;align-items:center;gap:10px}
+  .bag .m{flex:1;min-width:0;font-weight:800}
+  .bag .m small{display:block;color:var(--muted);font-weight:600;font-size:12.5px}
+  .bag .amt{font-family:'Baloo 2',sans-serif;font-size:22px;font-weight:800}
+  .bag img{width:64px;height:64px;object-fit:cover;border-radius:10px}
+  .sbtn{font:inherit;font-size:13.5px;font-weight:800;border:1.5px solid var(--line);background:#fff;color:var(--pink-d);border-radius:12px;padding:9px 13px;cursor:pointer}
+  .sbtn.pri{background:var(--pink);border-color:var(--pink);color:#fff}
+  .inline{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+  .inline input{padding:10px;font-size:15px}
+  label.chk{display:flex;align-items:center;gap:12px;cursor:pointer}
+  label.chk input{width:22px;height:22px;flex-shrink:0}
+  .money{position:relative}
+  .money::before{content:'$';position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-weight:800}
+  .money input{padding-left:24px;font-weight:800}
+  label.pick{display:flex;align-items:center;justify-content:center;border:2px dashed #f0b9cf;border-radius:14px;padding:14px;font-weight:800;color:var(--pink-d);cursor:pointer;margin-top:8px}
+  #slip{position:absolute;opacity:0;width:1px;height:1px}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="back" href="admin.html">‹</a>
+  <div style="flex:1"><h1>Cash</h1><div class="sub">Cash bags from closing → received → banked</div></div>
+</header>
+<main class="wrap"><div id="view"><div class="loading">Loading…</div></div></main>
+<script src="kk.js"></script>
+<script>
+  var U = KK.requireLogin(['admin','manager']); if(U) KK.nav('manage');
+  var C = null, TAB = new URLSearchParams(location.search).get('tab') || 'receive', OPEN = null, PICK = {}, SLIP = '', AMT = '';
+  function money(n){ return '$'+(Number(n)||0).toFixed(2); }
+  function load(){ KK.post('cashList').then(function(r){ C = r; render(); }); }
+  function held(b){ return b.status === 'received' && b.receivedAmount !== '' ? b.receivedAmount : b.amount; }
+
+  function render(){
+    var list = C.bags.filter(function(b){ return TAB==='check' ? (!b.checked || (b.query && !b.resolved)) : TAB==='receive' ? b.status==='with closer' : TAB==='verify' ? b.status==='deposited' : TAB==='bank' ? b.status==='received' : b.status==='banked'; });
+    var count = function(st){ return C.bags.filter(function(b){ return b.status===st; }).length; };
+    var html = '<div class="big"><div class="l">Not banked yet</div><div class="v">'+money(C.notBanked)+'</div><div class="h">'+
+      (C.holders.length ? C.holders.map(function(h){ return '<span>'+KK.esc(h.name)+' holds '+money(h.amount)+'</span>'; }).join('') : '<span>All cash is banked 🎉</span>')+'</div></div>'+
+      (C.awaitingCheck ? '<div class="h" style="margin-top:6px"><span>'+money(C.awaitingCheck)+' banked by crew, waiting for you to check</span></div>' : '')+
+      '<div class="seg" style="flex-wrap:wrap"><button class="'+(TAB==='check'?'on':'')+'" onclick="TAB=\'check\';OPEN=null;render()">Check sales ('+(C.toCheck+C.queries)+')</button>'+
+      '<button class="'+(TAB==='receive'?'on':'')+'" onclick="TAB=\'receive\';OPEN=null;render()">With crew ('+count('with closer')+')</button>'+
+      '<button class="'+(TAB==='verify'?'on':'')+'" onclick="TAB=\'verify\';OPEN=null;render()">To verify ('+count('deposited')+')</button>'+
+      '<button class="'+(TAB==='bank'?'on':'')+'" onclick="TAB=\'bank\';OPEN=null;render()">To bank ('+count('received')+')</button>'+
+      '<button class="'+(TAB==='done'?'on':'')+'" onclick="TAB=\'done\';OPEN=null;render()">Banked</button></div><div id="msg"></div>';
+    if(!list.length) html += '<div class="card"><p class="hint" style="margin:0">'+({check:'Every closing is checked against HitPay. 🎉', receive:'No cash with crew right now.', verify:'No crew deposits to check.', bank:'Nothing waiting to be banked.', done:'Nothing banked yet.'})[TAB]+'</p></div>';
+    if(TAB === 'receive') html += list.map(function(b){
+      return '<div class="bag"'+(b.overdue?' style="border-color:#c81e3a;background:#fdecef"':'')+'><div class="top2"><div class="m">'+KK.esc(b.event)+' · '+KK.esc(b.date)+'<small>With '+KK.esc(b.closedBy)+' · '+
+        (b.overdue ? '<b style="color:#c81e3a">🚨 '+b.overdue+' day'+(b.overdue>1?'s':'')+' overdue</b>' : 'due '+KK.esc(b.due))+'</small></div><span class="amt">'+money(b.amount)+'</span></div>'+
+        (OPEN === b.id ? '<div class="inline"><div class="money"><input id="rAmt" type="number" step="0.01" value="'+b.amount.toFixed(2)+'"></div><input id="rNote" placeholder="Note if different"></div>'+
+          '<div style="display:flex;gap:8px;margin-top:8px"><button class="sbtn pri" onclick="receive(\''+b.id+'\')">Confirm received</button><button class="sbtn" onclick="OPEN=null;render()">Cancel</button></div>'
+          : '<button class="sbtn pri" style="margin-top:10px" onclick="OPEN=\''+b.id+'\';render()">I\'ve received this bag</button>')+'</div>'; }).join('');
+    if(TAB === 'check') html += '<p class="hint" style="margin-top:10px">Enter the day\'s totals from HitPay. The app compares cash sales with the cash the closer counted, and asks them to explain if it\'s off by more than the cash tolerance.</p>'+
+      list.map(function(b){
+        if(b.checked) return '<div class="bag" style="border-color:#c81e3a"><div class="top2"><div class="m">'+KK.esc(b.event)+' · '+KK.esc(b.date)+'<small>Closed by '+KK.esc(b.closedBy)+'</small></div><span class="amt">'+money(b.amount)+'</span></div>'+
+          '<p class="hint" style="color:#c81e3a;font-weight:800">⚠ '+KK.esc(b.query)+'</p>'+(b.reply ? '<p class="hint"><b>'+KK.esc(b.closedBy)+' says:</b> '+KK.esc(b.reply)+'</p>' : '<p class="hint">Waiting for '+KK.esc(b.closedBy)+' to explain. Chase them today.</p>')+
+          (OPEN === 'r'+b.id ? '<input id="rsNote" placeholder="How was it sorted? e.g. confirmed refund on HitPay" style="margin-top:8px"><div style="display:flex;gap:8px;margin-top:8px"><button class="sbtn pri" onclick="resolveQ(\''+b.id+'\')">Mark sorted</button><button class="sbtn" onclick="OPEN=null;render()">Cancel</button></div>'
+            : '<button class="sbtn" style="margin-top:8px" onclick="OPEN=\'r'+b.id+'\';render()">Mark as sorted</button>')+'</div>';
+        return '<div class="bag"><div class="top2"><div class="m">'+KK.esc(b.event)+' · '+KK.esc(b.date)+'<small>Cash counted by '+KK.esc(b.closedBy)+'</small></div><span class="amt">'+money(b.amount)+'</span></div>'+
+          (OPEN === 'c'+b.id ? '<label class="f">Total sales</label><div class="money"><input id="sTot" type="number" step="0.01" inputmode="decimal" oninput="autoPn()"></div>'+
+            '<div class="inline"><div><label class="f">Cash sales</label><div class="money"><input id="sCash" type="number" step="0.01" inputmode="decimal" oninput="autoPn()"></div></div>'+
+            '<div><label class="f">PayNow sales</label><div class="money"><input id="sPn" type="number" step="0.01" inputmode="decimal"></div></div></div>'+
+            '<div style="display:flex;gap:8px;margin-top:8px"><button class="sbtn pri" onclick="checkSales(\''+b.id+'\')">Check</button><button class="sbtn" onclick="OPEN=null;render()">Cancel</button></div>'
+            : '<button class="sbtn pri" style="margin-top:10px" onclick="OPEN=\'c'+b.id+'\';render()">Enter HitPay totals</button>')+'</div>';
+      }).join('');
+    if(TAB === 'verify'){
+      var groups = {}; list.forEach(function(b){ (groups[b.slip] = groups[b.slip] || []).push(b); });
+      html += Object.keys(groups).map(function(k){
+        var g = groups[k], b = g[0], exp = g.reduce(function(s, x){ return s + x.amount; }, 0), sent = g.reduce(function(s, x){ return s + (Number(x.bankedAmount)||0); }, 0);
+        return '<div class="bag"><div class="top2">'+(b.slip?'<a href="'+KK.esc(b.slip)+'" target="_blank" rel="noopener"><img src="'+KK.esc(b.slip)+'" alt="Proof"></a>':'')+
+          '<div class="m">'+KK.esc(b.bankedBy)+' · '+KK.esc(b.method)+'<small>'+g.map(function(x){ return KK.esc(x.event)+' '+KK.esc(x.date); }).join(', ')+' · bags had '+money(exp)+'</small></div><span class="amt">'+money(sent)+'</span></div>'+
+          (Math.abs(sent-exp) > 0.005 ? '<p class="hint" style="color:var(--bad)">They sent '+money(sent)+' but the bags had '+money(exp)+'. '+KK.esc(b.notes)+'</p>' : '')+
+          (OPEN === b.id ? '<div class="inline"><div class="money"><input id="vAmt" type="number" step="0.01" value="'+sent.toFixed(2)+'"></div><input id="vNote" placeholder="Note if different"></div>'+
+            '<div style="display:flex;gap:8px;margin-top:8px"><button class="sbtn pri" onclick="verify(\''+b.id+'\')">Confirm it\'s in the bank</button><button class="sbtn" onclick="OPEN=null;render()">Cancel</button></div>'
+            : '<button class="sbtn pri" style="margin-top:10px" onclick="OPEN=\''+b.id+'\';render()">Check against the bank</button>')+'</div>';
+      }).join('');
+    }
+    if(TAB === 'bank' && list.length){
+      var total = list.filter(function(b){ return PICK[b.id]; }).reduce(function(s, b){ return s + held(b); }, 0);
+      html += list.map(function(b){
+        return '<div class="bag"><label class="chk"><input type="checkbox" '+(PICK[b.id]?'checked':'')+' onchange="PICK[\''+b.id+'\']=this.checked;AMT=\'\';render()">'+
+          '<div class="m">'+KK.esc(b.event)+' · '+KK.esc(b.date)+'<small>Received by '+KK.esc(b.receivedBy)+' · '+KK.esc(b.receivedAt)+'</small></div><span class="amt">'+money(held(b))+'</span></label></div>'; }).join('')+
+        '<div class="card"><h2>Bank deposit</h2><p class="hint">Tick the bags in this deposit. Selected: <b>'+money(total)+'</b></p>'+
+        '<label class="f">Amount on the deposit slip</label><div class="money"><input id="bAmt" type="number" step="0.01" value="'+(AMT!==''?AMT:total?total.toFixed(2):'')+'" oninput="AMT=this.value"></div>'+
+        '<label class="f">Deposit slip photo</label>'+(SLIP ? '<img src="'+SLIP+'" style="width:100%;max-height:220px;object-fit:cover;border-radius:12px" alt=""><button class="sbtn" style="margin-top:6px" onclick="SLIP=\'\';render()">Retake</button>'
+          : '<label class="pick" for="slip">📸 Add deposit slip photo</label><input id="slip" type="file" accept="image/*" onchange="pickSlip(this)">')+
+        '<label class="f">Note (if the amount is different)</label><input id="bNote">'+
+        '<button class="btn" style="margin-top:12px" onclick="bank()">Mark as banked</button></div>';
+    }
+    if(TAB === 'done') html += list.map(function(b){
+      return '<div class="bag"><div class="top2">'+(b.slip?'<a href="'+KK.esc(b.slip)+'" target="_blank" rel="noopener"><img src="'+KK.esc(b.slip)+'" alt="Deposit slip"></a>':'')+
+        '<div class="m">'+KK.esc(b.event)+' · '+KK.esc(b.date)+'<small>'+KK.esc(b.method||'Banked')+' '+KK.esc(b.bankedAt)+' by '+KK.esc(b.bankedBy)+(b.verifiedBy&&b.verifiedBy!==b.bankedBy?' · checked by '+KK.esc(b.verifiedBy):'')+'</small></div><span class="amt">'+money(held(b))+'</span></div></div>'; }).join('');
+    document.getElementById('view').innerHTML = html;
+  }
+  function err(t){ document.getElementById('msg').innerHTML = '<div class="msg bad">'+KK.esc(t)+'</div>'; window.scrollTo({top:0, behavior:'smooth'}); }
+  function receive(id){
+    KK.post('cashReceive',{id:id, amount:document.getElementById('rAmt').value, note:document.getElementById('rNote').value}).then(function(r){ if(!r.ok) return err(r.error); OPEN = null; load(); });
+  }
+  // PayNow fills itself in as total − cash (you can still change it)
+  function autoPn(){ var t = parseFloat(document.getElementById('sTot').value), c = parseFloat(document.getElementById('sCash').value), p = document.getElementById('sPn');
+    if(!isNaN(t) && !isNaN(c) && !p.dataset.typed) p.value = (t - c).toFixed(2); p.oninput = function(){ p.dataset.typed = '1'; }; }
+  function checkSales(id){
+    var v = function(i){ return document.getElementById(i).value; };
+    KK.post('cashSalesCheck',{id:id, total:v('sTot'), cash:v('sCash'), paynow:v('sPn')}).then(function(r){
+      if(!r.ok) return err(r.error); OPEN = null; load();
+      setTimeout(function(){ document.getElementById('msg').innerHTML = r.flagged ? '<div class="msg warn">Cash is off by '+money(Math.abs(r.diff))+'. The closer has been asked to explain; it stays here until you mark it sorted.</div>' : '<div class="msg ok">✓ Cash matches the sales.</div>'; }, 400);
+    });
+  }
+  function resolveQ(id){ KK.post('cashResolve',{id:id, note:document.getElementById('rsNote').value}).then(function(r){ if(!r.ok) return err(r.error); OPEN = null; load(); }); }
+  function verify(id){
+    KK.post('cashVerify',{id:id, amount:document.getElementById('vAmt').value, note:document.getElementById('vNote').value}).then(function(r){ if(!r.ok) return err(r.error); OPEN = null; load(); });
+  }
+  function pickSlip(inp){ var f = inp.files && inp.files[0]; if(f) KK.shrink(f, 1400, 0.75).then(function(d){ SLIP = d; render(); }); }
+  function bank(){
+    var ids = Object.keys(PICK).filter(function(k){ return PICK[k]; });
+    KK.post('cashBank',{ids:ids, amount:document.getElementById('bAmt').value, slip:SLIP, note:document.getElementById('bNote').value}).then(function(r){
+      if(!r.ok) return err(r.error); PICK = {}; SLIP = ''; AMT = ''; TAB = 'done'; load();
+    });
+  }
+  if(U) load();
+</script>
+</body>
+</html>

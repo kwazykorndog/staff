@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Stock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="kk.css">
+<style>
+  .wrap{max-width:760px}
+  .seg{display:flex;gap:6px;margin-top:12px}
+  .seg button{font:inherit;font-weight:800;font-size:14px;color:var(--muted);padding:9px 14px;border-radius:12px;border:1.5px solid var(--line);background:var(--card)}
+  .seg button.on{background:var(--ink);border-color:var(--ink);color:#fff}
+  .loc{display:block;background:var(--card);border:1.5px solid var(--line);border-radius:18px;margin-top:12px;overflow:hidden;text-decoration:none;color:inherit;cursor:pointer}
+  .loc-h{padding:12px 16px;font-weight:800;font-size:16px;display:flex;align-items:center;gap:8px}
+  .loc-h small{margin-left:auto;font-size:12px;opacity:.85}
+  .loc-b{padding:12px 16px;display:flex;align-items:center;gap:10px}
+  .loc-b b{font-size:15px}
+  .loc-b small{display:block;color:var(--muted);font-weight:600;font-size:12.5px}
+  .pill{margin-left:auto;font-size:12px;font-weight:800;border-radius:99px;padding:4px 10px;white-space:nowrap}
+  .pill.bad{background:var(--bad-soft);color:var(--bad)} .pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.none{background:#f6eff2;color:var(--muted)}
+  .need{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+  .need:first-of-type{border-top:0}
+  .need .nm{flex:1;min-width:0;font-weight:700}
+  .need .nm small{display:block;color:var(--muted);font-weight:600;font-size:12px}
+  .need .q{font-family:'Baloo 2',sans-serif;font-size:20px;font-weight:800;color:var(--pink-d);white-space:nowrap}
+  pre.order{white-space:pre-wrap;background:#fbf6f8;border-radius:12px;padding:12px;font:inherit;font-size:13.5px;margin-top:10px}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;text-align:right;padding:6px 4px;font-weight:800}
+  th:first-child{text-align:left}
+  td{padding:8px 4px;border-top:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}
+  td:first-child{text-align:left;font-weight:700}
+  tr.low td{background:var(--mustard-soft)}
+  tr.cat td{font-size:11.5px;font-weight:900;color:var(--pink-d);text-transform:uppercase;letter-spacing:.06em;border-top:0;padding-top:16px;text-align:left}
+  td input{width:72px;text-align:center;padding:8px 4px;font-weight:800}
+  .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .sbtn{font:inherit;font-size:13.5px;font-weight:800;border:1.5px solid var(--line);background:#fff;color:var(--pink-d);border-radius:12px;padding:9px 13px;cursor:pointer}
+  .sbtn.danger{color:var(--bad)}
+  .hint2{font-size:12.5px;color:var(--muted);font-weight:600}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="back" href="admin.html" id="back">‹</a>
+  <div style="flex:1"><h1 id="title">Stock</h1><div class="sub" id="sub">On hand at each event · what to restock</div></div>
+</header>
+<main class="wrap">
+  <div id="view"><div class="loading">Loading…</div></div>
+</main>
+<script src="kk.js"></script>
+<script>
+  var U = KK.requireLogin(['admin','manager']); if(U) KK.nav('manage');
+  var O = null, T = null, VIEW = 'list', CUR = null, ROWS = null, TPLNAME = '', ORIG = '';
+
+  function load(then){
+    Promise.all([KK.post('stockOverview'), KK.post('templates')]).then(function(r){ O = r[0]; T = r[1]; (then || render)(); });
+  }
+  function ev(name){ return O.events.filter(function(e){ return e.name === name; })[0]; }
+  function go(view, cur){ VIEW = view; CUR = cur || null; render(); window.scrollTo({top:0}); }
+  function fmtN(n, unit){ return n === null ? '–' : n === 'N/A' ? 'N/A' : n + (unit ? ' ' + unit : ''); }
+  function shortCat(c){ return c.replace(/ \(.*\)/, ''); }
+  // Category headings in the WhatsApp order, in the words the kitchen uses
+  function orderCat(c){
+    if(/^Event corndogs/i.test(c)) return 'Corndogs 8 pack';
+    if(/^Frozen corndogs/i.test(c)) return 'Frozen corndog 5 pack';
+    return shortCat(c);
+  }
+
+  function render(){
+    document.getElementById('back').onclick = VIEW === 'list' || VIEW === 'templates' ? null : function(e){ e.preventDefault(); go(VIEW.indexOf('tpl')===0 ? 'templates' : VIEW==='detail' ? 'list' : 'detail', VIEW==='detail' ? null : CUR); };
+    document.getElementById('back').href = VIEW === 'list' || VIEW === 'templates' ? 'admin.html' : '#';
+    ({list:list, templates:templates, detail:detail, opening:opening, levels:levels, tpl:tplEdit})[VIEW]();
+  }
+  function seg(){ return '<div class="seg"><button class="'+(VIEW==='list'?'on':'')+'" onclick="go(\'list\')">📍 Locations</button><button class="'+(VIEW==='templates'?'on':'')+'" onclick="go(\'templates\')">📋 Templates</button></div>'; }
+
+  // ---------- locations ----------
+  function list(){
+    document.getElementById('title').textContent = 'Stock';
+    var html = seg();
+    if(!O.events.length) html += '<div class="card"><p class="hint" style="margin:0">No events running or starting in the next 3 days. Add one under Manage → Events.</p></div>';
+    O.events.forEach(function(e){
+      var pill = !e.counted ? '<span class="pill none">No stock yet</span>' : e.needCount ? '<span class="pill bad">'+e.needCount+' to restock</span>' : '<span class="pill ok">✓ All good</span>';
+      html += '<div class="loc" onclick="go(\'detail\',\''+KK.esc(e.name).replace(/'/g,"\\'")+'\')"><div class="loc-h" style="'+KK.colour(e.colour)+'">'+KK.esc(e.name)+
+        '<small>'+(e.template?KK.esc(e.template):'Default levels')+'</small></div><div class="loc-b"><div><b>'+(e.last ? KK.esc(e.last.type)+' · '+KK.esc(e.last.time) : 'Nothing counted yet')+'</b>'+
+        '<small>'+(e.last ? 'by '+KK.esc(e.last.by) : 'Enter the opening stock you\'re sending')+'</small></div>'+pill+'</div></div>';
+    });
+    document.getElementById('view').innerHTML = html;
+  }
+
+  function orderText(e){
+    var lines = [], cat = '';
+    e.items.filter(function(i){ return i.need > 0; }).forEach(function(i){
+      if(i.category !== cat){ cat = i.category; lines.push('\n*'+orderCat(cat)+'*'); }
+      lines.push('• '+i.item+' × '+i.need+(i.unit?' '+i.unit:''));
+    });
+    var d = new Date().toLocaleDateString('en-SG',{weekday:'short', day:'numeric', month:'short'});
+    return 'Restock for *'+e.name+'* · '+d+'\n'+lines.join('\n').trim();
+  }
+  function copyOrder(){
+    var e = ev(CUR), text = orderText(e), b = document.getElementById('copyBtn');
+    var done = function(){ b.textContent = '✓ Copied. Paste it in WhatsApp'; setTimeout(function(){ b.textContent = '📋 Copy order for WhatsApp'; }, 3000); };
+    try{ navigator.clipboard.writeText(text).then(done, fallback); }catch(err){ fallback(); }
+    function fallback(){ var p = document.getElementById('orderPre'); var r = document.createRange(); r.selectNodeContents(p); var s = getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent = 'Text selected: tap Copy'; }
+  }
+
+  function detail(){
+    var e = ev(CUR); if(!e) return go('list');
+    document.getElementById('title').textContent = e.name;
+    var needs = e.items.filter(function(i){ return i.need > 0; });
+    var html = '<p class="hint2" style="margin-top:8px">'+(e.last ? 'Latest: '+KK.esc(e.last.type)+' · '+KK.esc(e.last.time)+' by '+KK.esc(e.last.by) : 'No stock recorded yet')+
+      ' · levels: '+(e.template?KK.esc(e.template):'default')+'</p>';
+    html += '<div class="card"><h2>Restock needed</h2>'+(!e.counted ? '<p class="hint">Enter the opening stock first. After each closing count this shows what to send.</p>'
+      : needs.length ? needs.map(function(i){
+          return '<div class="need"><div class="nm">'+KK.esc(i.item)+'<small>'+KK.esc(shortCat(i.category))+' · '+fmtN(i.onHand)+' left, min '+i.min+', top up to '+i.top+'</small></div><span class="q">+'+i.need+' '+KK.esc(i.unit)+'</span></div>'; }).join('')+
+        '<button class="btn" id="copyBtn" style="margin-top:12px" onclick="copyOrder()">📋 Copy order for WhatsApp</button><pre class="order" id="orderPre">'+KK.esc(orderText(e))+'</pre>'
+      : '<p class="hint">Everything is at or above its minimum 🎉</p>')+'</div>';
+    html += '<div class="card"><h2>All stock</h2><table><tr><th>Item</th><th>On hand</th><th>Min</th><th>Top up</th></tr>';
+    var cat = '';
+    e.items.forEach(function(i){
+      if(i.category !== cat){ cat = i.category; html += '<tr class="cat"><td colspan="4">'+KK.esc(cat)+'</td></tr>'; }
+      html += '<tr class="'+(i.need>0?'low':'')+'"><td>'+KK.esc(i.item)+'</td><td>'+fmtN(i.onHand)+'</td><td>'+i.min+'</td><td>'+i.top+'</td></tr>';
+    });
+    html += '</table><p class="hint">Units: '+KK.esc(Array.from(new Set(e.items.map(function(i){ return i.unit; }))).join(', '))+'.</p></div>'+
+      '<div class="acts"><button class="sbtn" onclick="go(\'opening\',CUR)">📦 Enter opening stock</button><button class="sbtn" onclick="go(\'levels\',CUR)">✏️ Edit minimums for this event</button></div>';
+    document.getElementById('view').innerHTML = html;
+  }
+
+  // ---------- opening stock (what's packed and sent) ----------
+  function opening(){
+    var e = ev(CUR);
+    document.getElementById('title').textContent = 'Opening stock';
+    var html = '<p class="hint2" style="margin-top:8px">What you\'re sending to <b>'+KK.esc(e.name)+'</b>. Leave blank anything you\'re not sending.</p>'+
+      '<div class="card"><button class="sbtn" onclick="fillTop()">Fill with top-up levels</button><table style="margin-top:8px"><tr><th>Item</th><th>Top up</th><th>Sending</th></tr>';
+    var cat = '';
+    e.items.forEach(function(i, n){
+      if(i.category !== cat){ cat = i.category; html += '<tr class="cat"><td colspan="3">'+KK.esc(cat)+'</td></tr>'; }
+      html += '<tr><td>'+KK.esc(i.item)+'</td><td>'+i.top+'</td><td><input type="number" inputmode="numeric" min="0" id="os'+n+'" placeholder="'+KK.esc(i.unit)+'"></td></tr>';
+    });
+    html += '</table><div id="omsg"></div><div class="acts"><button class="btn" style="width:auto;padding:12px 20px" onclick="saveOpening()">Save opening stock</button><button class="sbtn" onclick="go(\'detail\',CUR)">Cancel</button></div></div>';
+    document.getElementById('view').innerHTML = html;
+  }
+  function fillTop(){ ev(CUR).items.forEach(function(i, n){ document.getElementById('os'+n).value = i.top; }); }
+  function saveOpening(){
+    var e = ev(CUR), counts = e.items.map(function(i, n){ return {category:i.category, item:i.item, count:document.getElementById('os'+n).value}; });
+    KK.post('openingStock', {event:e.name, counts:counts}).then(function(r){
+      if(!r.ok) return document.getElementById('omsg').innerHTML = '<div class="msg bad">'+KK.esc(r.error)+'</div>';
+      load(function(){ go('detail', e.name); });
+    });
+  }
+
+  // ---------- levels editor (event or template) ----------
+  function levelTable(rows, withPick){
+    var html = '<table><tr><th>Item</th><th>Min</th><th>Top up</th></tr>', cat = '';
+    rows.forEach(function(r, n){
+      if(r.category !== cat){ cat = r.category; html += '<tr class="cat"><td colspan="3">'+KK.esc(cat)+'</td></tr>'; }
+      html += '<tr><td>'+KK.esc(r.item)+'<div class="hint2">'+KK.esc(r.unit||'')+'</div></td><td><input type="number" inputmode="numeric" min="0" value="'+(r.min===''?'':r.min)+'" oninput="ROWS['+n+'].min=this.value" placeholder="–"></td>'+
+        '<td><input type="number" inputmode="numeric" min="0" value="'+(r.top===''?'':r.top)+'" oninput="ROWS['+n+'].top=this.value" placeholder="–"></td></tr>';
+    });
+    return html + '</table><p class="hint">Min = flag when below this. Top up = order up to this. Leave Min blank for items this event doesn\'t carry; they\'re hidden from the stock take.</p>';
+  }
+  function allRows(from){
+    var have = {}; (from || []).forEach(function(r){ have[r.category+'|'+r.item] = r; });
+    return T.items.map(function(s){ var r = have[s.category+'|'+s.item]; return {category:s.category, item:s.item, unit:s.unit, min: r ? r.min : '', top: r ? r.top : ''}; });
+  }
+  function levels(){
+    var e = ev(CUR);
+    document.getElementById('title').textContent = 'Minimums';
+    if(!ROWS || ROWS._for !== e.name){ ROWS = allRows(e.items); ROWS._for = e.name; TPLNAME = ''; }
+    document.getElementById('view').innerHTML = '<p class="hint2" style="margin-top:8px">For <b>'+KK.esc(e.name)+'</b> only. Changing a template doesn\'t change this event.</p>'+
+      '<div class="card"><label class="f" for="tp">Start from a template</label><div style="display:flex;gap:8px"><select id="tp">'+
+        T.templates.map(function(t){ return '<option'+(t.name===TPLNAME?' selected':'')+'>'+KK.esc(t.name)+'</option>'; }).join('')+'</select><button class="sbtn" onclick="useTpl()">Apply</button></div>'+
+      '</div><div class="card">'+levelTable(ROWS)+'<div id="lmsg"></div><div class="acts"><button class="btn" style="width:auto;padding:12px 20px" onclick="saveLevels()">Save minimums</button>'+
+      '<button class="sbtn" onclick="ROWS=null;go(\'detail\',CUR)">Cancel</button></div></div>';
+  }
+  function useTpl(){ TPLNAME = document.getElementById('tp').value; var t = T.templates.filter(function(x){ return x.name === TPLNAME; })[0]; ROWS = allRows(t.rows); ROWS._for = CUR; levels(); }
+  function saveLevels(){
+    KK.post('stockLevelsSave', {event:CUR, rows:ROWS, template:TPLNAME}).then(function(r){
+      if(!r.ok) return document.getElementById('lmsg').innerHTML = '<div class="msg bad">'+KK.esc(r.error)+'</div>';
+      ROWS = null; load(function(){ go('detail', CUR); });
+    });
+  }
+
+  // ---------- templates ----------
+  function templates(){
+    document.getElementById('title').textContent = 'Stock';
+    document.getElementById('view').innerHTML = seg()+'<p class="hint2" style="margin-top:10px">Starting points for each kind of event. Pick one when you create an event; you can still change any number for that event.</p>'+
+      T.templates.map(function(t){
+        var carried = t.rows.filter(function(r){ return r.min !== ''; }).length;
+        return '<div class="loc" onclick="editTpl(\''+KK.esc(t.name).replace(/'/g,"\\'")+'\')"><div class="loc-b"><div><b>'+KK.esc(t.name)+'</b><small>'+carried+' items carried</small></div><span class="pill none">Edit</span></div></div>';
+      }).join('')+'<button class="btn ghost" style="margin-top:12px" onclick="editTpl(\'\')">+ New template</button>';
+  }
+  function editTpl(name){
+    var t = T.templates.filter(function(x){ return x.name === name; })[0];
+    ORIG = name; TPLNAME = name; ROWS = allRows(t ? t.rows : (T.templates[0] ? T.templates[0].rows : []));
+    go('tpl');
+  }
+  function tplEdit(){
+    document.getElementById('title').textContent = ORIG ? 'Edit template' : 'New template';
+    document.getElementById('view').innerHTML = '<div class="card"><label class="f" for="tn">Template name</label><input id="tn" value="'+KK.esc(TPLNAME)+'" oninput="TPLNAME=this.value" placeholder="e.g. Bazaar, 3-day event, 1-day event">'+
+      (ORIG ? '' : '<p class="hint">Filled in from "'+KK.esc(T.templates[0] ? T.templates[0].name : '')+'" to save typing. Change what you need.</p>')+'</div>'+
+      '<div class="card">'+levelTable(ROWS)+'<div id="tmsg"></div><div class="acts"><button class="btn" style="width:auto;padding:12px 20px" onclick="saveTpl()">Save template</button>'+
+      '<button class="sbtn" onclick="go(\'templates\')">Cancel</button>'+(ORIG ? '<button class="sbtn danger" onclick="delTpl()">Delete template</button>' : '')+'</div></div>';
+  }
+  function saveTpl(){
+    KK.post('templateSave', {name:TPLNAME, originalName:ORIG, rows:ROWS}).then(function(r){
+      if(!r.ok) return document.getElementById('tmsg').innerHTML = '<div class="msg bad">'+KK.esc(r.error)+'</div>';
+      load(function(){ go('templates'); });
+    });
+  }
+  function delTpl(){ KK.post('templateSave', {originalName:ORIG, remove:true}).then(function(){ load(function(){ go('templates'); }); }); }
+
+  if(U){ var want = new URLSearchParams(location.search).get('event'); load(function(){ want && ev(want) ? go('detail', want) : render(); }); }
+</script>
+</body>
+</html>

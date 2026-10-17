@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Sales</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="kk.css">
+<style>
+  .wrap{max-width:760px}
+  .chips{display:flex;gap:6px;overflow-x:auto;margin-top:12px;padding-bottom:2px}
+  .chips button{font:inherit;font-weight:800;font-size:13.5px;color:var(--muted);padding:9px 12px;border-radius:12px;border:1.5px solid var(--line);background:var(--card);white-space:nowrap}
+  .chips button.on{background:var(--ink);border-color:var(--ink);color:#fff}
+  .range{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+  .kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px}
+  .kpi{background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:12px 14px}
+  .kpi span{font-size:12px;font-weight:800;color:var(--muted)}
+  .kpi b{display:block;font-family:'Baloo 2',sans-serif;font-size:26px;line-height:1.1;font-variant-numeric:tabular-nums}
+  .split{height:10px;border-radius:99px;overflow:hidden;display:flex;margin-top:8px;background:#f6eff2}
+  .split i{display:block;height:100%}
+  .lg{display:flex;gap:12px;font-size:12px;font-weight:700;color:var(--muted);margin-top:6px}
+  .lg i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:4px;vertical-align:0}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;text-align:right;padding:6px 4px;font-weight:800}
+  th:first-child{text-align:left}
+  td{padding:9px 4px;border-top:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}
+  td:first-child{text-align:left;font-weight:700}
+  .dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:0}
+  .day{display:grid;grid-template-columns:62px 1fr 78px;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--line);font-size:13.5px}
+  .day:first-of-type{border-top:0}
+  .day .d{font-weight:800}
+  .day .d small{display:block;color:var(--muted);font-weight:600;font-size:11.5px}
+  .day .bars{display:flex;flex-direction:column;gap:3px}
+  .day .bar{height:12px;border-radius:4px;min-width:3px}
+  .day .v{text-align:right;font-weight:800;font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="back" href="admin.html">‹</a>
+  <div style="flex:1"><h1>Sales</h1><div class="sub">From the HitPay totals managers enter for each closing</div></div>
+</header>
+<main class="wrap">
+  <div class="chips" id="chips"></div>
+  <div class="range"><input type="date" id="from" onchange="custom()"><input type="date" id="to" onchange="custom()"></div>
+  <div id="view"><div class="loading">Loading…</div></div>
+</main>
+<script src="kk.js"></script>
+<script>
+  var U = KK.requireLogin(['admin','manager']); if(U) KK.nav('manage');
+  var RANGE = 'week', S = null;
+  function pad(n){ return ('0'+n).slice(-2); }
+  function ymd(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+  function money(n){ return '$'+(Number(n)||0).toLocaleString('en-SG',{minimumFractionDigits:2, maximumFractionDigits:2}); }
+  function ranges(){
+    var t = new Date(); t.setHours(12); var dow = (t.getDay()+6)%7;
+    var mon = new Date(t); mon.setDate(t.getDate()-dow);
+    var lmon = new Date(mon); lmon.setDate(mon.getDate()-7); var lsun = new Date(mon); lsun.setDate(mon.getDate()-1);
+    var m1 = new Date(t.getFullYear(), t.getMonth(), 1, 12), lm1 = new Date(t.getFullYear(), t.getMonth()-1, 1, 12), lmEnd = new Date(t.getFullYear(), t.getMonth(), 0, 12);
+    var d7 = new Date(t); d7.setDate(t.getDate()-6);
+    return { week:['This week', ymd(mon), ymd(t)], last:['Last week', ymd(lmon), ymd(lsun)], d7:['Last 7 days', ymd(d7), ymd(t)],
+             month:['This month', ymd(m1), ymd(t)], lmonth:['Last month', ymd(lm1), ymd(lmEnd)] };
+  }
+  function chips(){
+    var r = ranges();
+    document.getElementById('chips').innerHTML = Object.keys(r).map(function(k){ return '<button class="'+(RANGE===k?'on':'')+'" onclick="pick(\''+k+'\')">'+r[k][0]+'</button>'; }).join('');
+  }
+  function pick(k){ RANGE = k; var r = ranges()[k]; document.getElementById('from').value = r[1]; document.getElementById('to').value = r[2]; load(); }
+  function custom(){ RANGE = ''; load(); }
+  function load(){
+    chips();
+    KK.post('salesSummary',{from:document.getElementById('from').value, to:document.getElementById('to').value}).then(function(r){ S = r; render(); });
+  }
+  function render(){
+    var rows = S.rows, tot = rows.reduce(function(a, r){ a.total += r.total; a.cash += r.cash; a.paynow += r.paynow; a.orders += r.orders; return a; }, {total:0, cash:0, paynow:0, orders:0});
+    var note = S.unchecked ? '<div class="msg warn">'+S.unchecked+' closing'+(S.unchecked>1?'s':'')+' in this range not checked yet, so not counted. <a href="cash.html?tab=check">Enter HitPay totals ›</a></div>' : '';
+    if(!rows.length){ document.getElementById('view').innerHTML = note+'<div class="card"><p class="hint" style="margin:0">No checked closings in this range yet.</p></div>'; return; }
+    var cashPct = tot.total ? Math.round(tot.cash / tot.total * 100) : 0, pnPct = tot.total ? Math.round(tot.paynow / tot.total * 100) : 0;
+    var html = '<div class="kpis"><div class="kpi"><span>Total sales</span><b>'+money(tot.total)+'</b></div><div class="kpi"><span>Event days</span><b>'+rows.length+'</b></div>'+
+      '<div class="kpi"><span>Average per event day</span><b>'+money(tot.total/rows.length)+'</b></div>'+
+      '<div class="kpi"><span>Cash vs PayNow</span><div class="split"><i style="width:'+cashPct+'%;background:#3b1d2b"></i><i style="width:'+pnPct+'%;background:var(--pink)"></i></div>'+
+      '<div class="lg"><span><i style="background:#3b1d2b"></i>Cash '+cashPct+'%</span><span><i style="background:var(--pink)"></i>PayNow '+pnPct+'%</span></div></div></div>';
+    // by event
+    var ev = {}; rows.forEach(function(r){ var e = ev[r.event] || (ev[r.event] = {event:r.event, colour:r.colour, days:0, total:0, orders:0}); e.days++; e.total += r.total; e.orders += r.orders; });
+    html += '<div class="card"><h2>By event</h2><table><tr><th>Event</th><th>Days</th><th>Sales</th><th>Avg/day</th></tr>'+
+      Object.keys(ev).map(function(k){ return ev[k]; }).sort(function(a, b){ return b.total - a.total; }).map(function(e){
+        return '<tr><td><span class="dot" style="'+KK.colour(e.colour)+'"></span>'+KK.esc(e.event)+'</td><td>'+e.days+'</td><td>'+money(e.total)+'</td><td>'+money(e.total/e.days)+'</td></tr>'; }).join('')+'</table></div>';
+    // by day
+    var max = Math.max.apply(null, rows.map(function(r){ return r.total; })) || 1, days = {};
+    rows.forEach(function(r){ (days[r.date] = days[r.date] || []).push(r); });
+    html += '<div class="card"><h2>By day</h2>'+Object.keys(days).sort().reverse().map(function(d){
+      var list = days[d], sum = list.reduce(function(s, r){ return s + r.total; }, 0);
+      return '<div class="day"><div class="d">'+new Date(d+'T12:00').toLocaleDateString('en-SG',{weekday:'short'})+'<small>'+new Date(d+'T12:00').toLocaleDateString('en-SG',{day:'numeric', month:'short'})+'</small></div>'+
+        '<div class="bars">'+list.map(function(r){ return '<div class="bar" title="'+KK.esc(r.event)+' '+money(r.total)+'" style="width:'+Math.max(2, r.total/max*100)+'%;'+KK.colour(r.colour)+';background:'+KK.COLOURS[r.colour][1]+'"></div>'; }).join('')+'</div>'+
+        '<div class="v">'+money(sum)+'</div></div>'; }).join('')+'</div>';
+    document.getElementById('view').innerHTML = note + html;
+  }
+  if(U) pick('week');
+</script>
+</body>
+</html>

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Notices</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="kk.css">
+<style>
+  .nt{background:var(--card);border:1.5px solid var(--line);border-radius:18px;padding:16px;margin-top:12px}
+  .nt.pin{border-color:#f3b6cc}
+  .nt.must{box-shadow:0 0 0 2px var(--mustard-soft)}
+  .nt.old{opacity:.55}
+  .nt h2{font-size:19px;margin:0}
+  .meta{font-size:12.5px;color:var(--muted);font-weight:600;margin:4px 0 10px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  .pill{font-size:11px;font-weight:800;border-radius:99px;padding:2px 8px;background:#f6eff2;color:var(--muted)}
+  .nt img.ph{width:100%;max-height:320px;object-fit:cover;border-radius:12px;margin-bottom:10px}
+  .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .sbtn{font:inherit;font-size:13px;font-weight:800;border:1.5px solid var(--line);background:#fff;color:var(--pink-d);border-radius:10px;padding:7px 11px;cursor:pointer}
+  .seen{font-size:13px;margin-top:10px;background:#fbf6f8;border-radius:12px;padding:10px 12px}
+  .chk{display:flex;gap:10px;align-items:center;margin-top:10px;font-weight:700}
+  .chk input{width:auto}
+</style>
+</head>
+<body>
+<header class="top">
+  <div style="flex:1"><h1>Notices</h1><div class="sub" id="sub">From Jay, Hazel and Rebecca</div></div>
+</header>
+<main class="wrap">
+  <div id="newBtn"></div>
+  <div id="form"></div>
+  <div id="list"><div class="loading">Loading…</div></div>
+</main>
+<script src="kk.js"></script>
+<script>
+  var U = KK.requireLogin(); if(U) KK.nav('notices');
+  var DATA = null, EVENTS = [], FORM = null, PHOTO = '';
+
+  function load(){
+    Promise.all([KK.post('notices'), KK.config()]).then(function(r){
+      DATA = r[0]; EVENTS = r[1].events || [];
+      if(!DATA.ok) return document.getElementById('list').innerHTML = '<div class="msg bad">'+KK.esc(DATA.error)+'</div>';
+      render();
+      // Reading the page counts as seeing ordinary notices; "must acknowledge" ones need a tap.
+      var seen = DATA.notices.filter(function(n){ return !n.acked && !n.mustAck && !n.expired; }).map(function(n){ return n.id; });
+      if(seen.length) KK.post('noticeAck', {ids: seen});
+    });
+  }
+
+  function render(){
+    document.getElementById('newBtn').innerHTML = DATA.canEdit && !FORM ? '<button class="btn" style="margin-top:12px" onclick="edit()">+ New notice</button>' : '';
+    document.getElementById('form').innerHTML = FORM ? formHTML() : '';
+    document.getElementById('list').innerHTML = DATA.notices.length ? DATA.notices.map(function(n, i){
+      var ack = n.mustAck ? (n.acked ? '<div class="msg ok" style="margin-top:10px">✓ You confirmed this · '+KK.esc(n.acked)+'</div>'
+                                     : '<button class="btn" style="margin-top:12px" onclick="ack(\''+n.id+'\')">Got it</button>') : '';
+      return '<div class="nt'+(n.pinned?' pin':'')+(n.mustAck&&!n.acked?' must':'')+(n.expired?' old':'')+'">'+
+        '<h2>'+(n.pinned?'📌 ':'')+KK.esc(n.title)+'</h2><div class="meta">'+KK.esc(n.byName)+' · '+KK.esc(n.created)+
+        (n.audience!=='All'?' <span class="pill">'+KK.esc(n.audience)+' crew</span>':'')+(n.mustAck?' <span class="pill">Must read</span>':'')+
+        (n.expires?' <span class="pill">'+(n.expired?'Expired':'Until')+' '+KK.esc(n.expires)+'</span>':'')+'</div>'+
+        (n.photo ? '<img class="ph" src="'+KK.esc(n.photo)+'" alt="">' : '')+'<div class="rich">'+KK.rich(n.body)+'</div>'+ack+
+        (DATA.canEdit ? '<div class="acts"><button class="sbtn" onclick="edit('+i+')">Edit</button><button class="sbtn" onclick="seen('+i+')">Who\'s seen it</button>'+
+          '<button class="sbtn" onclick="removeN('+i+')">Remove</button></div><div id="seen'+i+'"></div>' : '')+'</div>';
+    }).join('') : '<div class="card"><p class="hint" style="margin:0">No notices right now.</p></div>';
+  }
+
+  function ack(id){ KK.post('noticeAck', {id:id}).then(load); }
+  function seen(i){
+    var n = DATA.notices[i];
+    KK.post('noticeAcks', {id:n.id}).then(function(r){
+      document.getElementById('seen'+i).innerHTML = '<div class="seen"><b>Seen ('+r.seen.length+'):</b> '+(r.seen.map(function(s){ return KK.esc(s.name); }).join(', ')||'nobody yet')+
+        '<br><b>Not yet ('+r.notSeen.length+'):</b> '+(r.notSeen.map(KK.esc).join(', ')||'everyone has seen it 🎉')+'</div>';
+    });
+  }
+  function removeN(i){ KK.post('noticeSave', {id:DATA.notices[i].id, remove:true}).then(load); }
+
+  function edit(i){
+    var n = i === undefined ? null : DATA.notices[i];
+    FORM = n ? Object.assign({}, n) : {title:'', body:'', audience:'All', expires:'', pinned:false, mustAck:false, photo:''};
+    PHOTO = ''; render(); window.scrollTo({top:0, behavior:'smooth'});
+  }
+  function formHTML(){
+    var f = FORM;
+    return '<div class="card"><h2>'+(f.id?'Edit notice':'New notice')+'</h2>'+
+      '<label class="f" for="nT">Title</label><input id="nT" value="'+KK.esc(f.title)+'" oninput="FORM.title=this.value" placeholder="e.g. New sauce: Truffle Mayo">'+
+      '<label class="f" for="nB">Message</label><textarea id="nB" rows="6" oninput="FORM.body=this.value" placeholder="Write the notice. Use **bold**, and start lines with - for bullets.">'+KK.esc(f.body)+'</textarea>'+
+      '<label class="f">Photo (optional)</label>'+((PHOTO||f.photo) ? '<img src="'+KK.esc(PHOTO||f.photo)+'" style="width:100%;max-height:200px;object-fit:cover;border-radius:12px" alt=""><button class="sbtn" style="margin-top:6px" onclick="PHOTO=\'\';FORM.photo=\'\';FORM.removePhoto=true;render()">Remove photo</button>'
+        : '<input type="file" accept="image/*" onchange="pickPhoto(this)">')+
+      '<div class="row2"><div><label class="f" for="nA">Who sees it</label><select id="nA" onchange="FORM.audience=this.value"><option>All</option>'+
+        EVENTS.map(function(e){ return '<option'+(f.audience===e.name?' selected':'')+'>'+KK.esc(e.name)+'</option>'; }).join('')+'</select></div>'+
+      '<div><label class="f" for="nE">Show until (optional)</label><input id="nE" type="date" value="'+KK.esc(f.expires)+'" onchange="FORM.expires=this.value"></div></div>'+
+      '<label class="chk"><input type="checkbox" '+(f.pinned?'checked':'')+' onchange="FORM.pinned=this.checked"> 📌 Pin to the top</label>'+
+      '<label class="chk"><input type="checkbox" '+(f.mustAck?'checked':'')+' onchange="FORM.mustAck=this.checked"> Staff must tap "Got it" (you\'ll see who has)</label>'+
+      '<div id="fmsg"></div><div class="acts"><button class="btn" style="width:auto;padding:12px 20px" onclick="save()">'+(f.id?'Save':'Post notice')+'</button>'+
+      '<button class="sbtn" onclick="FORM=null;render()">Cancel</button></div></div>';
+  }
+  function pickPhoto(inp){ var f = inp.files && inp.files[0]; if(f) KK.shrink(f, 1000, 0.7).then(function(d){ PHOTO = d; render(); }); }
+  function save(){
+    var f = FORM, m = document.getElementById('fmsg');
+    if(!String(f.title).trim()){ m.innerHTML = '<div class="msg bad">Give the notice a title.</div>'; return; }
+    m.innerHTML = '<div class="msg warn">Saving…</div>';
+    KK.post('noticeSave', {id:f.id, title:f.title, body:f.body, audience:f.audience, expires:f.expires, pinned:f.pinned, mustAck:f.mustAck, photo:PHOTO, removePhoto:!!f.removePhoto})
+      .then(function(r){ if(!r.ok){ m.innerHTML = '<div class="msg bad">'+KK.esc(r.error)+'</div>'; return; } FORM = null; load(); });
+  }
+  if(U) load();
+</script>
+</body>
+</html>

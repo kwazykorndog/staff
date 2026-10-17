@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Clock In or Out</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="kk.css">
+<style>
+  .clock{text-align:center;margin-top:14px}
+  .clock .t{font-family:'Baloo 2',sans-serif;font-size:54px;font-weight:800;line-height:1;color:var(--pink-d)}
+  .clock .d{color:var(--muted);font-weight:700;font-size:14px;margin-top:4px}
+  .step-n{display:inline-flex;width:22px;height:22px;border-radius:99px;background:var(--pink);color:#fff;font-size:12px;
+    font-weight:900;align-items:center;justify-content:center;margin-right:6px;vertical-align:1px}
+  .prompt{margin-top:6px;border-radius:16px;background:linear-gradient(135deg,var(--pink-soft),var(--mustard-soft));padding:16px;text-align:center}
+  .prompt .pe{font-size:46px;line-height:1.1}
+  .prompt .pl{font-size:11px;font-weight:900;color:var(--pink-d);text-transform:uppercase;letter-spacing:.07em;margin-top:6px}
+  .prompt .pt{font-family:'Baloo 2',sans-serif;font-size:22px;font-weight:800;line-height:1.15;margin-top:2px}
+  .prompt .ps{font-size:12.5px;color:var(--muted);font-weight:600;margin-top:6px}
+  .cam{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:12px;width:100%;border:2px dashed #f0b9cf;
+    border-radius:16px;padding:18px;background:#fff;font:inherit;font-size:16px;font-weight:800;color:var(--pink-d);cursor:pointer}
+  #photo{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}
+  .shot{display:none;margin-top:12px;position:relative}
+  .shot img{width:100%;max-height:340px;object-fit:cover;border-radius:16px;display:block}
+  .shot button{position:absolute;right:10px;bottom:10px;border:0;border-radius:12px;padding:9px 13px;font:inherit;
+    font-weight:800;font-size:13.5px;background:rgba(42,26,34,.78);color:#fff}
+  .who{display:flex;align-items:center;gap:10px;font-weight:700}
+  .who small{display:block;color:var(--muted);font-weight:600;font-size:12.5px}
+  .who a{margin-left:auto;font-size:12.5px;color:var(--pink-d);font-weight:800;text-decoration:none}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="back" href="index.html">‹</a>
+  <div><h1 id="title">Clock in / out</h1><div class="sub">Do it at the booth when you arrive and when you leave</div></div>
+</header>
+
+<main class="wrap">
+  <div class="clock"><div class="t" id="now">--:--</div><div class="d" id="date"></div></div>
+  <div id="load" class="loading">Loading…</div>
+
+  <div id="form" style="display:none">
+    <div class="card">
+      <div class="who"><span>🙋</span><div id="whoName"></div><a href="#" onclick="KK.logout();return false">Not you?</a></div>
+      <div id="eventWrap">
+        <label class="f"><span class="step-n">1</span>Event</label>
+        <select id="event"></select>
+        <div id="rosterNote"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <label class="f"><span class="step-n" id="stepN">2</span>Today's check</label>
+      <div class="prompt">
+        <div class="pe" id="pEmoji">📸</div>
+        <div class="pl">Take a selfie at the booth and…</div>
+        <div class="pt" id="pText"></div>
+        <div class="ps">Same check for everyone today. It changes every day.</div>
+      </div>
+      <label class="cam" id="camBtn" for="photo">📸 Take the selfie</label>
+      <input id="photo" type="file" accept="image/*" capture="user">
+      <div class="shot" id="shot"><img id="shotImg" alt="Your selfie"><button type="button" onclick="retake()">↺ Retake</button></div>
+    </div>
+
+    <button class="btn" id="go" style="margin-top:16px" disabled onclick="go()">👋 Clock in</button>
+    <div id="msg"></div>
+  </div>
+</main>
+
+<script src="kk.js"></script>
+<script>
+  var U = KK.requireLogin(); if(U) KK.nav('today');
+  var PHOTO = '', MODE = 'in', ME = null, TODAY = [];
+
+  function tick(){ document.getElementById('now').textContent = KK.hhmm(); document.getElementById('date').textContent = KK.today(); }
+  tick(); setInterval(tick, 10000);
+
+  if(U) Promise.all([KK.config(), KK.post('me')]).then(function(r){
+    var c = r[0], m = r[1];
+    if(!m.ok) throw new Error(m.error);
+    ME = m.clockedIn; TODAY = m.today || []; KK.clockIn(ME);
+    MODE = ME ? 'out' : 'in';
+    document.getElementById('whoName').innerHTML = KK.esc(U.name)+'<small>'+(ME ? 'Clocked in at '+KK.esc(ME.event)+' since '+KK.esc(ME.time) : 'Ready to clock in')+'</small>';
+    document.getElementById('title').textContent = MODE==='in' ? 'Clock in' : 'Clock out';
+    document.getElementById('go').textContent = MODE==='in' ? '👋 Clock in' : '🏠 Clock out';
+    if(MODE==='out'){ document.getElementById('eventWrap').style.display='none'; document.getElementById('stepN').textContent='1'; }
+    var want = new URLSearchParams(location.search).get('event');
+    var mine = TODAY.filter(function(t){ return t.type==='shift'; });
+    var sel = want || (mine[0] && mine[0].event) || KK.mem('event');
+    var ev = document.getElementById('event');
+    ev.innerHTML = '<option value="">Pick the event…</option>' + c.events.map(function(e){
+      return '<option'+(e.name===sel?' selected':'')+'>'+KK.esc(e.name)+'</option>'; }).join('');
+    ev.onchange = function(){ KK.mem('event', this.value); rosterNote(); };
+    rosterNote();
+    var p = c.prompt || {prompt:'Selfie with the booth behind you', emoji:'🤳'};
+    document.getElementById('pEmoji').textContent = p.emoji || '📸';
+    document.getElementById('pText').textContent = p.prompt;
+    document.getElementById('load').style.display='none';
+    document.getElementById('form').style.display='block';
+  }).catch(function(){
+    document.getElementById('load').innerHTML = 'Could not load. Check your signal and <a href="">try again</a>.';
+  });
+
+  // Shows today's roster and warns if they picked a different event.
+  function rosterNote(){
+    var el = document.getElementById('rosterNote'), ev = document.getElementById('event').value;
+    var mine = TODAY.filter(function(t){ return t.type==='shift'; });
+    if(!mine.length){ el.innerHTML = '<p class="hint">You\'re not on today\'s roster. You can still clock in.</p>'; return; }
+    var here = mine.filter(function(r){ return r.event === ev; })[0];
+    el.innerHTML = here ? '<div class="msg ok" style="margin-top:10px">Your shift today: <b>'+KK.esc(here.start)+'–'+KK.esc(here.end)+'</b></div>'
+      : '<div class="msg warn" style="margin-top:10px">You\'re rostered at <b>'+KK.esc(mine[0].event)+'</b> today ('+KK.esc(mine[0].start)+'–'+KK.esc(mine[0].end)+'). Check you picked the right event.</div>';
+  }
+
+  document.getElementById('photo').onchange = function(){
+    var f = this.files && this.files[0]; if(!f) return;
+    KK.shrink(f).then(function(data){
+      PHOTO = data;
+      document.getElementById('shotImg').src = PHOTO;
+      document.getElementById('shot').style.display = 'block';
+      document.getElementById('camBtn').style.display = 'none';
+      document.getElementById('go').disabled = false;
+    }).catch(function(){ show('bad','Could not read that photo. Please take it again.'); });
+  };
+  function retake(){
+    PHOTO = ''; document.getElementById('photo').value = '';
+    document.getElementById('shot').style.display = 'none';
+    document.getElementById('camBtn').style.display = 'flex';
+    document.getElementById('go').disabled = true;
+    document.getElementById('photo').click();
+  }
+  function show(cls, html){ document.getElementById('msg').innerHTML = '<div class="msg '+cls+'">'+html+'</div>'; }
+
+  function go(override){
+    var event = document.getElementById('event').value;
+    if(MODE==='in' && !event) return show('bad','Pick the event first.');
+    if(!PHOTO) return show('bad','Take the selfie first.');
+    var b = document.getElementById('go'); b.disabled = true;
+    show('warn','Saving… keep this page open.');
+    KK.post('clock',{event:event, type:MODE, photo:PHOTO, override:override||''}).then(function(r){
+      b.disabled = false;
+      if(r.blocked) return showBlocked(r.error);
+      if(!r.ok) return show('bad', KK.esc(r.error||'Something went wrong. Try again.'));
+      b.style.display = 'none';
+      if(MODE==='in'){
+        KK.clockIn({event:event, time:r.time});
+        var late = r.late ? '<br><b>'+(r.late<60 ? r.late+' min' : Math.floor(r.late/60)+'h '+(r.late%60)+'m')+' late</b> (shift starts '+KK.esc(String(r.roster).split('–')[0])+').' : r.roster ? '<br>Shift '+KK.esc(r.roster)+'. On time 👍' : '';
+        show(r.late ? 'warn' : 'ok','✅ Clocked in at <b>'+KK.esc(r.time)+'</b> · '+KK.esc(event)+'. Have a good shift!'+late+
+          (r.note ? '<br>'+KK.esc(r.note) : '')+'<a class="btn" style="margin-top:12px" href="index.html">Go to the hub →</a>');
+      } else {
+        KK.clockIn(null);
+        show('ok','✅ Clocked out at <b>'+KK.esc(r.time)+'</b>. You worked <b>'+KK.esc(r.hours)+' h</b>. Thanks, '+KK.esc(U.name)+'!'+
+          ((r.flags||[]).length ? '<br><small>Noted for the manager: '+KK.esc(r.flags.join('; '))+'</small>' : '')+
+          (r.closingMins!=null ? (r.closingMins <= r.closingTarget
+            ? '<div class="msg ok" style="margin-top:10px">🎉 Good job! You closed in time: <b>'+r.closingMins+' min</b> from stop sale.</div>'
+            : '<div class="msg warn" style="margin-top:10px">⏱ You didn\'t close within '+r.closingTarget+' min (it took <b>'+r.closingMins+' min</b> from stop sale). Work on closing earlier next time!</div>') : '')+
+          '<a class="btn ghost" style="margin-top:12px" href="index.html">Back to the hub</a>');
+      }
+    }).catch(function(){ b.disabled = false; show('bad','Could not reach the server. Check your signal and tap again. Nothing was saved.'); });
+  }
+
+  // Last person at the event: closing must be done first, with an escape hatch that the manager sees.
+  function showBlocked(err){
+    show('bad','🔒 '+KK.esc(err)+'<a class="btn" style="margin-top:12px" href="index.html">Go to the hub</a>'+
+      '<p style="margin-top:12px;font-weight:600"><a href="#" onclick="overrideBox();return false">Can\'t submit closing? Clock out anyway</a></p><div id="ovr"></div>');
+  }
+  function overrideBox(){
+    document.getElementById('ovr').innerHTML = '<textarea id="ovrReason" style="margin-top:6px" placeholder="What went wrong? e.g. no signal, app won\'t submit. The manager will follow up."></textarea>'+
+      '<button class="btn" style="margin-top:10px;background:var(--bad)" onclick="doOverride()">Clock out without closing</button>';
+  }
+  function doOverride(){ var r = document.getElementById('ovrReason').value.trim(); if(!r) return document.getElementById('ovrReason').focus(); go(r); }
+</script>
+</body>
+</html>

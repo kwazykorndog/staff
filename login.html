@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Kwazy Korndog Login</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="kk.css">
+<style>
+  .hero-logo{width:72px;height:72px;border-radius:22px;background:var(--pink-soft);display:flex;align-items:center;justify-content:center;font-size:40px;margin:36px auto 10px}
+  .biglogo{display:block;width:min(300px,82%);height:auto;margin:44px auto 4px}
+  .title{text-align:center;font-size:28px;font-weight:800}
+  .tag{text-align:center;color:var(--muted);font-weight:600;margin-top:2px}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <img class="biglogo" src="logo.png" alt="Kwazy Korndog">
+  <p class="tag" id="tag">Staff app</p>
+
+  <form id="loginForm" class="card" autocomplete="on">
+    <label class="f" for="un">Username</label>
+    <input id="un" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="e.g. khin">
+    <label class="f" for="pw">Password</label>
+    <input id="pw" type="password" autocomplete="current-password">
+    <div id="msg"></div>
+    <button class="btn" id="loginBtn" style="margin-top:16px">Log in</button>
+    <p class="hint" style="text-align:center;margin-top:12px">Forgot your password? Ask Jay or Hazel to reset it.</p>
+  </form>
+
+  <form id="changeForm" class="card" style="display:none" autocomplete="off">
+    <h2>Set your own password</h2>
+    <p class="hint" id="changeHint">You're using a temporary password. Pick your own to carry on.</p>
+    <div id="oldWrap"><label class="f" for="old">Temporary password</label><input id="old" type="password" autocomplete="current-password"></div>
+    <label class="f" for="np">New password</label>
+    <input id="np" type="password" autocomplete="new-password" placeholder="At least 6 characters">
+    <label class="f" for="np2">New password again</label>
+    <input id="np2" type="password" autocomplete="new-password">
+    <div id="cmsg"></div>
+    <button class="btn" id="changeBtn" style="margin-top:16px">Save password</button>
+  </form>
+</main>
+
+<script src="kk.js"></script>
+<script>
+  var params = new URLSearchParams(location.search), TEMP = '';
+  var next = params.get('next') || 'index.html';
+  if(!/^[a-z]+\.html/.test(next)) next = 'index.html';
+
+  function msg(id, cls, t){ document.getElementById(id).innerHTML = t ? '<div class="msg '+cls+'">'+KK.esc(t)+'</div>' : ''; }
+  function showChange(){
+    document.getElementById('loginForm').style.display = 'none';
+    document.getElementById('changeForm').style.display = 'block';
+    document.getElementById('oldWrap').style.display = TEMP ? 'none' : 'block';
+    document.getElementById('tag').textContent = 'Hi ' + (KK.user() ? KK.user().name : '') + '!';
+  }
+  var u = KK.user();
+  if(u && u.mustChange) showChange();
+  else if(u && !params.get('change')) location.replace(next);
+
+  document.getElementById('loginForm').onsubmit = function(e){
+    e.preventDefault();
+    var un = document.getElementById('un').value.trim().toLowerCase(), pw = document.getElementById('pw').value;
+    if(!un || !pw) return msg('msg','bad','Enter your username and password.');
+    var b = document.getElementById('loginBtn'); b.disabled = true; msg('msg','warn','Logging in…');
+    KK.post('login', {username:un, password:pw}).then(function(r){
+      b.disabled = false;
+      if(!r.ok) return msg('msg','bad', r.error || 'Could not log in.');
+      if(r.user.mustChange){ TEMP = pw; msg('msg'); showChange(); return; }
+      location.replace(next);
+    }).catch(function(){ b.disabled = false; msg('msg','bad','Could not reach the server. Check your signal and try again.'); });
+  };
+
+  document.getElementById('changeForm').onsubmit = function(e){
+    e.preventDefault();
+    var old = TEMP || document.getElementById('old').value, np = document.getElementById('np').value, np2 = document.getElementById('np2').value;
+    if(!old) return msg('cmsg','bad','Enter your temporary password.');
+    if(np.length < 6) return msg('cmsg','bad','Use at least 6 characters.');
+    if(np !== np2) return msg('cmsg','bad','The two new passwords don\'t match.');
+    var b = document.getElementById('changeBtn'); b.disabled = true; msg('cmsg','warn','Saving…');
+    KK.post('changePassword', {old:old, password:np}).then(function(r){
+      b.disabled = false;
+      if(!r.ok) return msg('cmsg','bad', r.error || 'Could not save.');
+      location.replace(next);
+    }).catch(function(){ b.disabled = false; msg('cmsg','bad','Could not reach the server. Try again.'); });
+  };
+</script>
+</body>
+</html>

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Crew Handbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="kk.css">
+<style>
+  .grp{font-size:11.5px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin:20px 4px 8px}
+  a.sec{display:flex;align-items:center;gap:12px;padding:14px;border:1.5px solid var(--line);border-radius:16px;background:var(--card);
+    text-decoration:none;color:inherit;margin-top:8px;font-weight:800}
+  a.sec small{display:block;color:var(--muted);font-weight:600;font-size:12px}
+  a.sec .t{flex:1;min-width:0}
+  .new{font-size:11px;font-weight:900;border-radius:99px;padding:3px 8px;background:var(--pink);color:#fff;white-space:nowrap}
+  .doc{background:var(--card);border:1.5px solid var(--line);border-radius:18px;padding:18px;margin-top:12px}
+  .doc h2{font-size:22px;margin:0}
+  .doc .meta{color:var(--muted);font-size:12.5px;font-weight:600;margin:4px 0 14px}
+  .doc img{width:100%;border-radius:12px;margin:6px 0}
+  .doc .rich b{color:var(--ink)}
+  .tbc{background:var(--mustard-soft);color:var(--amber);font-weight:800;border-radius:4px;padding:0 3px}
+  .sbtn{font:inherit;font-size:13px;font-weight:800;border:1.5px solid var(--line);background:#fff;color:var(--pink-d);border-radius:10px;padding:8px 12px;cursor:pointer}
+  .thumbs{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .thumbs div{position:relative}
+  .thumbs img{width:84px;height:84px;object-fit:cover;border-radius:10px}
+  .thumbs button{position:absolute;top:-6px;right:-6px;border:0;border-radius:99px;width:22px;height:22px;background:var(--ink);color:#fff;font-weight:900}
+  #q{margin-top:12px}
+  .pts{margin-top:6px}
+  .pt{display:flex;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+  .pt:first-child{border-top:0}
+  .pn{width:28px;height:28px;border-radius:99px;background:var(--pink-soft);color:var(--pink-d);font-weight:900;font-size:13.5px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .pb{flex:1;min-width:0;font-size:15px;line-height:1.5}
+  .pb img{display:block;width:100%;max-width:420px;border-radius:12px;margin-top:8px;cursor:zoom-in}
+  .zoom{position:fixed;inset:0;background:rgba(20,10,15,.88);z-index:80;display:flex;align-items:center;justify-content:center;padding:16px}
+  .zoom img{max-width:100%;max-height:100%;border-radius:10px}
+  .ped{border:1.5px solid var(--line);border-radius:14px;padding:10px;margin-top:10px;background:#fffafc}
+  .ped-h{display:flex;align-items:center;gap:6px;margin-bottom:8px}
+  .ped-h .grow{flex:1}
+  .ib{font:inherit;font-size:14px;font-weight:800;border:1.5px solid var(--line);background:#fff;border-radius:9px;width:34px;height:32px;cursor:pointer}
+  .ib:disabled{opacity:.35}
+  .ped-ph{margin-top:8px}
+  .ped-ph img{width:100%;max-height:200px;object-fit:cover;border-radius:10px;display:block;margin-bottom:6px}
+  .ped-add{display:flex;align-items:center;justify-content:center;border:2px dashed #f0b9cf;border-radius:12px;padding:11px;font-weight:800;font-size:14px;color:var(--pink-d);cursor:pointer;margin-top:8px;background:#fff}
+  .hidefile{position:absolute;opacity:0;width:1px;height:1px}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="back" href="index.html" id="back">‹</a>
+  <div style="flex:1"><h1>Learn</h1><div class="sub" id="sub">How we do things at Kwazy Korndog</div></div>
+</header>
+<main class="wrap">
+  <div id="view"><div class="loading">Loading…</div></div>
+</main>
+<script src="kk.js"></script>
+<script>
+  var U = KK.requireLogin(); if(U) KK.nav('learn');
+  var D = null, FORM = null;
+
+  function load(then){ KK.post('handbook').then(function(r){ D = r; if(then) then(); else route(); }); }
+  function route(){
+    var id = location.hash.slice(1), want = new URLSearchParams(location.search).get('title');
+    if(want && !id){ var m = D.sections.filter(function(s){ return s.title.toLowerCase() === want.toLowerCase(); })[0]; if(m){ history.replaceState(null,'','handbook.html#'+m.id); id = m.id; } }
+    document.getElementById('back').href = id || FORM ? 'handbook.html' : 'index.html';
+    if(FORM) return editor();
+    var s = D.sections.filter(function(x){ return x.id === id; })[0];
+    if(s) return show(s);
+    list();
+  }
+  window.addEventListener('hashchange', function(){ FORM = null; route(); });
+
+  function list(){
+    var q = (document.getElementById('q') || {}).value || '', ql = q.toLowerCase(), html = '', grp = '';
+    var items = D.sections.filter(function(s){ return !ql || (s.title+' '+s.body+' '+s.pointers.map(function(p){ return p.t; }).join(' ')).toLowerCase().indexOf(ql) >= 0; });
+    html += '<input id="q" placeholder="Search the handbook, e.g. oil, refund, FIFO" value="'+KK.esc(q)+'" oninput="list()">';
+    if(D.toRead) html += '<div class="msg warn">'+D.toRead+' section'+(D.toRead>1?'s':'')+' new or updated for you. Open them and tap <b>Got it</b>.</div>';
+    if(D.canEdit) html += '<button class="btn" style="margin-top:12px" onclick="edit()">+ Add a section</button>';
+    items.forEach(function(s){
+      if(s.section !== grp){ grp = s.section; html += '<div class="grp">'+KK.esc(grp)+'</div>'; }
+      html += '<a class="sec" href="#'+s.id+'"><span class="t">'+KK.esc(s.title)+'<small>Updated '+KK.esc(s.updated)+'</small></span>'+
+        (!s.read ? '<span class="new">'+(s.readBefore?'Updated':'New')+'</span>' : '')+'<span style="color:#d9c4cd">›</span></a>';
+    });
+    if(!items.length) html += '<p class="hint">Nothing matches "'+KK.esc(q)+'".</p>';
+    document.getElementById('view').innerHTML = html;
+    var el = document.getElementById('q'); if(q){ el.focus(); el.setSelectionRange(q.length, q.length); }
+  }
+
+  function inline(t){ return KK.esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\bTBC\b/g, '<span class="tbc">TBC</span>'); }
+  function show(s){
+    var intro = s.body ? '<div class="rich">'+KK.rich(s.body).replace(/\bTBC\b/g, '<span class="tbc">TBC</span>')+'</div>' : '';
+    var pts = s.pointers.map(function(p, i){
+      return '<div class="pt"><span class="pn">'+(i+1)+'</span><div class="pb"><div>'+inline(p.t)+'</div>'+
+        (p.p ? '<img src="'+KK.esc(p.p)+'" alt="Photo reference for step '+(i+1)+'" onclick="zoom(this.src)">' : '')+'</div></div>'; }).join('');
+    document.getElementById('view').innerHTML = '<div class="doc"><h2>'+KK.esc(s.title)+'</h2><div class="meta">'+KK.esc(s.section)+' · updated '+KK.esc(s.updated)+
+      (s.updatedBy?' by '+KK.esc(s.updatedBy):'')+'</div>'+s.photos.map(function(p){ return '<img src="'+KK.esc(p)+'" alt="">'; }).join('')+
+      intro+(pts ? '<div class="pts">'+pts+'</div>' : '')+
+      (s.read ? '<div class="msg ok">✓ You\'ve read this version</div>' : '<button class="btn" style="margin-top:14px" onclick="ack(\''+s.id+'\')">Got it</button>')+
+      (D.canEdit ? '<div style="display:flex;gap:8px;margin-top:14px"><button class="sbtn" onclick="edit(\''+s.id+'\')">Edit</button><button class="sbtn" onclick="removeS(\''+s.id+'\')">Remove</button></div>' : '')+
+      '</div><a class="btn ghost" style="margin-top:12px" href="handbook.html">All sections</a><div id="zoom" onclick="this.innerHTML=\'\'"></div>';
+    window.scrollTo({top:0});
+  }
+  function zoom(src){ document.getElementById('zoom').innerHTML = '<div class="zoom"><img src="'+src+'" alt=""></div>'; }
+  function ack(id){ KK.post('handbookAck', {id:id}).then(function(){ load(); }); }
+  function removeS(id){ KK.post('handbookSave', {id:id, remove:true}).then(function(){ location.hash = ''; load(); }); }
+
+  function edit(id){
+    var s = D.sections.filter(function(x){ return x.id === id; })[0];
+    FORM = s ? {id:s.id, title:s.title, section:s.section, order:s.order, body:s.body, photos:s.photos.slice(), pointers:s.pointers.map(function(p){ return {t:p.t, p:p.p}; })}
+             : {title:'', section:'', order:'', body:'', photos:[], pointers:[{t:'', p:''}]};
+    editor();
+  }
+  function editor(){
+    var f = FORM, groups = []; D.sections.forEach(function(s){ if(groups.indexOf(s.section) < 0) groups.push(s.section); });
+    var rows = f.pointers.map(function(p, i){
+      return '<div class="ped"><div class="ped-h"><span class="pn">'+(i+1)+'</span><span class="grow"></span>'+
+          '<button class="ib" title="Move up" onclick="mv('+i+',-1)"'+(i?'':' disabled')+'>↑</button><button class="ib" title="Move down" onclick="mv('+i+',1)"'+(i<f.pointers.length-1?'':' disabled')+'>↓</button>'+
+          '<button class="ib" title="Delete pointer" onclick="FORM.pointers.splice('+i+',1);editor()">🗑</button></div>'+
+        '<textarea rows="2" placeholder="Describe this step, e.g. Unfold and secure the canvas" oninput="FORM.pointers['+i+'].t=this.value">'+KK.esc(p.t)+'</textarea>'+
+        (p.p ? '<div class="ped-ph"><img src="'+KK.esc(p.p)+'" alt=""><button class="sbtn" onclick="FORM.pointers['+i+'].p=\'\';editor()">Remove photo</button></div>'
+             : '<label class="ped-add" for="pp'+i+'">📷 Add photo reference (optional)</label><input id="pp'+i+'" type="file" accept="image/*" class="hidefile" onchange="pickP(this,'+i+')">')+'</div>';
+    }).join('');
+    document.getElementById('view').innerHTML = '<div class="card"><h2>'+(f.id?'Edit section':'New section')+'</h2>'+
+      '<label class="f" for="hT">Title</label><input id="hT" value="'+KK.esc(f.title)+'" oninput="FORM.title=this.value" placeholder="e.g. Opening SOP">'+
+      '<div class="row2"><div><label class="f" for="hS">Group</label><input id="hS" list="grps" value="'+KK.esc(f.section)+'" oninput="FORM.section=this.value" placeholder="e.g. Daily SOPs">'+
+      '<datalist id="grps">'+groups.map(function(g){ return '<option value="'+KK.esc(g)+'">'; }).join('')+'</datalist></div>'+
+      '<div><label class="f" for="hO">Order</label><input id="hO" type="number" value="'+KK.esc(f.order)+'" oninput="FORM.order=this.value" placeholder="1 = first"></div></div>'+
+      '<label class="f" for="hB">Intro (optional)</label><textarea id="hB" rows="3" oninput="FORM.body=this.value" placeholder="e.g. Temperature: 170°C. Corndogs must be fully submerged.">'+KK.esc(f.body)+'</textarea>'+
+      '<label class="f">Pointers</label>'+rows+
+      '<button class="btn ghost" style="margin-top:10px" onclick="FORM.pointers.push({t:\'\',p:\'\'});editor();setTimeout(function(){var t=document.querySelectorAll(\'.ped textarea\');t[t.length-1].focus();},50)">+ Add pointer</button>'+
+      '<p class="hint">Use **bold** for key words. Write TBC for anything not confirmed yet. Changing the text or photos marks the section "Updated" so staff read it again.</p>'+
+      '<div id="hmsg"></div><div style="display:flex;gap:8px;margin-top:12px"><button class="btn" style="width:auto;padding:12px 20px" onclick="save()">Save</button>'+
+      '<button class="sbtn" onclick="FORM=null;route()">Cancel</button></div></div>';
+  }
+  function mv(i, d){ var a = FORM.pointers, t = a[i]; a[i] = a[i+d]; a[i+d] = t; editor(); }
+  function pickP(inp, i){ var f = inp.files && inp.files[0]; if(f) KK.shrink(f, 1000, 0.7).then(function(d){ FORM.pointers[i].p = d; editor(); }); }
+  function save(){
+    var f = FORM, m = document.getElementById('hmsg');
+    m.innerHTML = '<div class="msg warn">Saving… (photos can take a few seconds)</div>';
+    KK.post('handbookSave', {id:f.id, title:f.title, section:f.section, order:f.order, body:f.body, photos:f.photos, pointers:f.pointers}).then(function(r){
+      if(!r.ok){ m.innerHTML = '<div class="msg bad">'+KK.esc(r.error)+'</div>'; return; }
+      FORM = null; load(function(){ location.hash = r.id; route(); });
+    });
+  }
+  if(U) load();
+</script>
+</body>
+</html>

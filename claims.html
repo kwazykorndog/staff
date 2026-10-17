@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Expense Claims</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="kk.css">
+<style>
+  .tabs{display:flex;gap:6px;margin-top:12px;overflow-x:auto}
+  .tabs button{font:inherit;font-weight:800;font-size:14px;color:var(--muted);padding:9px 14px;border-radius:12px;border:1.5px solid var(--line);background:var(--card);white-space:nowrap}
+  .tabs button.on{background:var(--ink);border-color:var(--ink);color:#fff}
+  .cl{background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:14px;margin-top:10px;display:flex;gap:12px}
+  .cl img{width:64px;height:64px;object-fit:cover;border-radius:10px;flex-shrink:0;background:#f6eff2}
+  .cl .noimg{width:64px;height:64px;border-radius:10px;flex-shrink:0;background:#f6eff2;display:flex;align-items:center;justify-content:center;font-size:24px}
+  .cl .m{flex:1;min-width:0}
+  .cl .hd{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+  .cl .amt{font-family:'Baloo 2',sans-serif;font-size:22px;font-weight:800;line-height:1}
+  .cl .d{font-weight:700;margin-top:2px}
+  .cl small{display:block;color:var(--muted);font-weight:600;font-size:12.5px;margin-top:2px}
+  .st{font-size:11.5px;font-weight:800;border-radius:99px;padding:3px 9px;white-space:nowrap;align-self:flex-start}
+  .st.submitted{background:var(--mustard-soft);color:var(--amber)} .st.approved{background:var(--pink-soft);color:var(--pink-d)}
+  .st.paid{background:var(--ok-soft);color:var(--ok)} .st.rejected{background:var(--bad-soft);color:var(--bad)}
+  .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .sbtn{font:inherit;font-size:13px;font-weight:800;border:1.5px solid var(--line);background:#fff;color:var(--pink-d);border-radius:10px;padding:7px 11px;cursor:pointer}
+  .sbtn.ok{background:var(--ok);border-color:var(--ok);color:#fff}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+  .chips button{font:inherit;font-size:13.5px;font-weight:800;border-radius:99px;padding:8px 13px;border:1.5px solid var(--line);background:#fff;color:var(--muted)}
+  .chips button.on{background:var(--pink);border-color:var(--pink);color:#fff}
+  .money{position:relative}
+  .money::before{content:'$';position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--muted);font-weight:800}
+  .money input{padding-left:26px;font-weight:800;font-size:20px}
+  .sum{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px}
+  .sum div{background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:10px;text-align:center;font-size:12px;font-weight:800;color:var(--muted)}
+  .sum b{display:block;font-size:17px;color:var(--ink);margin-top:2px}
+  .rshot img{width:100%;max-height:260px;object-fit:cover;border-radius:12px;margin-top:8px}
+  label.pick{display:flex;align-items:center;justify-content:center;border:2px dashed #f0b9cf;border-radius:14px;padding:16px;font-weight:800;color:var(--pink-d);cursor:pointer;margin-top:6px}
+  #rcpt{position:absolute;opacity:0;width:1px;height:1px}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="back" href="me.html">‹</a>
+  <div style="flex:1"><h1>Expense claims</h1><div class="sub">Spent your own money on the business? Claim it back here.</div></div>
+</header>
+<main class="wrap">
+  <div class="tabs" id="tabs"></div>
+  <div id="view"><div class="loading">Loading…</div></div>
+</main>
+<script src="kk.js"></script>
+<script>
+  var U = KK.requireLogin(); if(U) KK.nav('me');
+  var MGR = KK.isMgr(U), TAB = (MGR && new URLSearchParams(location.search).get('tab')) || 'mine', MINE = null, ALL = null, EVENTS = [], CATS = [], F = null, OPEN = null;
+
+  function tabs(){
+    document.getElementById('tabs').innerHTML = !MGR ? '' : [['mine','My claims'],['todo','To approve'+(ALL&&ALL.pending?' ('+ALL.pending+')':'')],['all','All claims']].map(function(t){
+      return '<button class="'+(TAB===t[0]?'on':'')+'" onclick="TAB=\''+t[0]+'\';OPEN=null;render()">'+t[1]+'</button>'; }).join('');
+  }
+  function load(){
+    var jobs = [KK.post('claims'), KK.config()]; if(MGR) jobs.push(KK.post('claimsAll'));
+    Promise.all(jobs).then(function(r){ MINE = r[0]; CATS = r[0].categories || []; EVENTS = r[1].events || []; ALL = r[2] || null; render(); });
+  }
+  function status(c){ return {submitted:'Waiting for approval', approved:'Approved · to be paid', paid:'Paid', rejected:'Rejected'}[c.status] || c.status; }
+
+  function card(c, i, manage){
+    var who = manage ? '<b>'+KK.esc(c.name)+'</b> · ' : '';
+    var acts = '';
+    if(manage){
+      var self = c.username === ALL.me && ALL.role !== 'admin';
+      if(c.status === 'submitted') acts = self ? '<p class="hint">Your own claim: an admin approves this one.</p>'
+        : OPEN === 'rej'+c.id ? '<input id="rReason" placeholder="Why? e.g. receipt not readable, please resubmit" style="margin-top:8px"><div class="acts"><button class="sbtn" onclick="decide(\''+c.id+'\',\'reject\')">Reject claim</button><button class="sbtn" onclick="OPEN=null;render()">Cancel</button></div>'
+        : '<div class="acts"><button class="sbtn ok" onclick="decide(\''+c.id+'\',\'approve\')">✓ Approve</button><button class="sbtn" onclick="OPEN=\'rej'+c.id+'\';render()">Reject</button></div>';
+      if(c.status === 'approved' && !self) acts = '<div class="acts"><button class="sbtn" onclick="paid(\''+c.id+'\')">Mark as paid</button></div>';
+    }
+    return '<div class="cl">'+(c.receipt ? '<a href="'+KK.esc(c.receipt)+'" target="_blank" rel="noopener"><img src="'+KK.esc(c.receipt)+'" alt="Receipt"></a>' : '<div class="noimg">🧾</div>')+
+      '<div class="m"><div class="hd"><span class="amt">$'+c.amount.toFixed(2)+'</span><span class="st '+c.status+'">'+status(c)+'</span></div><div class="d">'+KK.esc(c.description)+'</div>'+
+      '<small>'+who+KK.esc(c.category)+(c.where?' · '+KK.esc(c.where):'')+' · bought '+KK.esc(c.date)+'</small>'+
+      (c.status==='rejected' && c.reason ? '<small style="color:var(--bad)">Rejected by '+KK.esc(c.decidedBy)+': '+KK.esc(c.reason)+'</small>' : '')+
+      (c.status==='approved' ? '<small>Approved by '+KK.esc(c.decidedBy)+' · '+KK.esc(c.decidedAt)+'</small>' : '')+
+      (c.status==='paid' ? '<small>'+KK.esc(c.paidNote)+'</small>' : '')+acts+'</div></div>';
+  }
+
+  function render(){
+    tabs();
+    var v = document.getElementById('view');
+    if(TAB === 'mine'){
+      v.innerHTML = (F ? formHTML() : '<button class="btn" style="margin-top:14px" onclick="newClaim()">+ New claim</button>')+
+        '<h2 style="margin:20px 4px 4px;font-size:17px">Your claims</h2>'+
+        (MINE.claims.length ? MINE.claims.map(function(c, i){ return card(c, i, false); }).join('') : '<p class="hint">No claims yet.</p>');
+      return;
+    }
+    var list = ALL.claims.filter(function(c){ return TAB === 'all' || c.status === 'submitted'; });
+    v.innerHTML = '<div class="sum"><div>Waiting<b>$'+ALL.totals.submitted.toFixed(2)+'</b></div><div>Approved, unpaid<b>$'+ALL.totals.approved.toFixed(2)+'</b></div><div>Paid<b>$'+ALL.totals.paid.toFixed(2)+'</b></div></div>'+
+      '<div id="amsg"></div>'+(list.length ? list.map(function(c, i){ return card(c, i, true); }).join('') : '<div class="card"><p class="hint" style="margin:0">'+(TAB==='todo'?'Nothing waiting for approval. 🎉':'No claims yet.')+'</p></div>');
+  }
+
+  function newClaim(){ F = {amount:'', date:KK.ymd(), category:'', where:'', description:'', photo:''}; render(); }
+  function formHTML(){
+    return '<div class="card"><h2>New claim</h2>'+
+      '<label class="f" for="cA">Amount</label><div class="money"><input id="cA" type="number" inputmode="decimal" step="0.01" min="0" value="'+KK.esc(F.amount)+'" oninput="F.amount=this.value"></div>'+
+      '<label class="f">Category</label><div class="chips">'+CATS.map(function(c){ return '<button class="'+(F.category===c?'on':'')+'" onclick="F.category=\''+c+'\';render()">'+c+'</button>'; }).join('')+'</div>'+
+      '<label class="f" for="cD">What did you buy?</label><input id="cD" value="'+KK.esc(F.description)+'" oninput="F.description=this.value" placeholder="e.g. 2 bags of ice from 7-Eleven">'+
+      '<div class="row2"><div><label class="f" for="cT">Date bought</label><input id="cT" type="date" value="'+KK.esc(F.date)+'" onchange="F.date=this.value"></div>'+
+      '<div><label class="f" for="cW">For which event?</label><select id="cW" onchange="F.where=this.value"><option value="">General / not sure</option>'+
+        EVENTS.map(function(e){ return '<option'+(F.where===e.name?' selected':'')+'>'+KK.esc(e.name)+'</option>'; }).join('')+'</select></div></div>'+
+      '<label class="f">Receipt photo</label>'+(F.photo ? '<div class="rshot"><img src="'+F.photo+'" alt="Receipt"></div><button class="sbtn" style="margin-top:6px" onclick="F.photo=\'\';render()">Retake</button>'
+        : '<label class="pick" for="rcpt">📸 Add receipt photo</label><input id="rcpt" type="file" accept="image/*" onchange="pick(this)">')+
+      '<div id="fmsg"></div><div class="acts"><button class="btn" style="width:auto;padding:12px 20px" onclick="submitClaim()">Submit claim</button><button class="sbtn" onclick="F=null;render()">Cancel</button></div></div>';
+  }
+  function pick(inp){ var f = inp.files && inp.files[0]; if(f) KK.shrink(f, 1400, 0.75).then(function(d){ F.photo = d; render(); }); }
+  function submitClaim(){
+    var m = document.getElementById('fmsg');
+    if(!(+F.amount > 0)) return m.innerHTML = '<div class="msg bad">Enter the amount.</div>';
+    if(!F.category) return m.innerHTML = '<div class="msg bad">Pick a category.</div>';
+    if(!F.description.trim()) return m.innerHTML = '<div class="msg bad">Say what you bought.</div>';
+    if(!F.photo) return m.innerHTML = '<div class="msg bad">Add a photo of the receipt.</div>';
+    m.innerHTML = '<div class="msg warn">Sending…</div>';
+    KK.post('claimSubmit', F).then(function(r){
+      if(!r.ok) return m.innerHTML = '<div class="msg bad">'+KK.esc(r.error)+'</div>';
+      F = null; load();
+    }).catch(function(){ m.innerHTML = '<div class="msg bad">Could not reach the server. Try again.</div>'; });
+  }
+  function decide(id, decision){
+    var r = document.getElementById('rReason');
+    KK.post('claimDecide', {id:id, decision:decision, reason: r ? r.value : ''}).then(function(x){
+      if(!x.ok) return document.getElementById('amsg').innerHTML = '<div class="msg bad">'+KK.esc(x.error)+'</div>';
+      OPEN = null; load();
+    });
+  }
+  function paid(id){ KK.post('claimPaid', {id:id}).then(function(x){ if(!x.ok) return document.getElementById('amsg').innerHTML = '<div class="msg bad">'+KK.esc(x.error)+'</div>'; load(); }); }
+  if(U) load();
+</script>
+</body>
+</html>

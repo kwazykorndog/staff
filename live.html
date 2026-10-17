@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Live Today</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="kk.css">
+<style>
+  .wrap{max-width:760px}
+  .ev{background:var(--card);border:1.5px solid var(--line);border-radius:18px;margin-top:14px;overflow:hidden}
+  .ev-h{padding:12px 16px;display:flex;align-items:center;gap:10px;font-weight:800;font-size:16px}
+  .ev-h small{margin-left:auto;font-size:12px;font-weight:800;opacity:.85}
+  .prog{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;padding:12px 16px 4px}
+  .pg{border-radius:10px;padding:8px;text-align:center;font-size:11.5px;font-weight:800;background:#f6eff2;color:var(--muted)}
+  .pg b{display:block;font-size:14px;margin-top:2px;font-variant-numeric:tabular-nums}
+  .pg.ok{background:var(--ok-soft);color:var(--ok)}
+  .lsec{font-size:11px;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;padding:14px 16px 4px}
+  .person{display:flex;align-items:center;gap:10px;padding:9px 16px;border-top:1px solid var(--line)}
+  .person:first-of-type{border-top:0}
+  .person .nm{flex:1;min-width:0;font-weight:700}
+  .person .nm small{display:block;color:var(--muted);font-weight:600;font-size:12px}
+  .st{font-size:11.5px;font-weight:800;border-radius:99px;padding:3px 9px;white-space:nowrap}
+  .st.on{background:var(--ok-soft);color:var(--ok)} .st.missing{background:var(--bad-soft);color:var(--bad)}
+  .st.left{background:#f6eff2;color:var(--muted)} .st.due{background:var(--pink-soft);color:var(--pink-d)}
+  .mini{font:inherit;font-size:12px;font-weight:800;border:1.5px solid var(--line);background:#fff;color:var(--pink-d);border-radius:10px;padding:6px 9px}
+  .alert{padding:10px 16px;border-top:1px solid var(--line);font-size:13.5px}
+  .alert.open{background:var(--mustard-soft);color:var(--amber);font-weight:700}
+  .alert.done{color:var(--muted)}
+  .alert small{display:block;font-weight:600;margin-top:2px}
+  .inline{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:8px}
+  .inline input{padding:9px 11px;font-size:14px}
+  .standby{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .standby span{border:1.5px dashed var(--line);border-radius:99px;padding:5px 11px;font-size:13px;font-weight:700;background:var(--card)}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="back" href="admin.html">‹</a>
+  <div><h1>Live today</h1><div class="sub" id="sub">Refreshes every minute</div></div>
+</header>
+<main class="wrap">
+  <div id="load" class="loading">Loading…</div>
+  <div id="standby"></div>
+  <div id="events"></div>
+  <div id="msg"></div>
+</main>
+<script src="kk.js"></script>
+<script>
+  var U = KK.requireLogin(['manager','admin']); if(U) KK.nav('manage');
+  var DATA = null, OPEN = null;
+
+  function load(){
+    KK.post('live').then(function(r){
+      document.getElementById('load').style.display = 'none';
+      if(!r.ok){ document.getElementById('events').innerHTML = '<div class="msg warn">'+KK.esc(r.error)+'</div>'; return; }
+      DATA = r; render();
+      document.getElementById('sub').textContent = 'As of '+r.now+' · refreshes every minute';
+    }).catch(function(){ document.getElementById('msg').innerHTML = '<div class="msg bad">Could not reach the server.</div>'; });
+  }
+
+  function pg(label, t, extra){ return '<div class="pg'+(t?' ok':'')+'">'+label+'<b>'+(t?'✓ '+KK.esc(t):KK.esc(extra||'–'))+'</b></div>'; }
+
+  function render(){
+    document.getElementById('standby').innerHTML = DATA.standby.length
+      ? '<div class="card"><h2 style="margin:0">On standby today</h2><div class="standby">'+DATA.standby.map(function(s){
+          return '<span>'+KK.esc(s.name)+(s.note?' · '+KK.esc(s.note):'')+'</span>'; }).join('')+'</div></div>' : '';
+    if(!DATA.events.length){ document.getElementById('events').innerHTML = '<div class="card"><p class="hint" style="margin:0">Nothing on the roster and nobody clocked in today.</p></div>'; return; }
+    document.getElementById('events').innerHTML = DATA.events.map(function(ev, ei){
+      var p = ev.progress, open = ev.alerts.filter(function(a){ return !a.resolvedBy; }).length;
+      var crew = ev.crew.map(function(c, ci){
+        var fix = c.state==='on' && c.username !== U.username
+          ? '<button class="mini" onclick="openFix('+ei+','+ci+')">Clock out</button>' : '';
+        var box = OPEN === 'fix'+ei+'_'+ci ? '<div style="padding:0 16px 12px"><div class="inline"><input id="fixTime" placeholder="Time they left, e.g. 18:05" value="'+KK.hhmm()+'">'+
+          '<span></span></div><div class="inline"><input id="fixReason" placeholder="Why? e.g. forgot to clock out"><button class="mini" onclick="doFix('+ei+','+ci+')">Save</button></div><div id="fixMsg"></div></div>' : '';
+        return '<div class="person"><div class="nm">'+(c.lead?'⭐ ':'')+KK.esc(c.name)+'<small>'+KK.esc(c.roster)+(c.flags?' · '+KK.esc(c.flags):'')+'</small></div>'+
+          '<span class="st '+c.state+'">'+KK.esc(c.text)+'</span>'+fix+'</div>'+box;
+      }).join('');
+      var alerts = ev.alerts.map(function(a, ai){
+        if(a.resolvedBy) return '<div class="alert done">✓ '+KK.esc(a.text)+'<small>Sorted by '+KK.esc(a.resolvedBy)+': '+KK.esc(a.note)+'</small></div>';
+        return '<div class="alert open">⚠ '+KK.esc(a.text)+'<small>'+KK.esc(a.time)+'</small>'+
+          (OPEN === 'al'+ei+'_'+ai ? '<div class="inline"><input id="alNote" placeholder="How was it sorted?"><button class="mini" onclick="doResolve('+ei+','+ai+')">Resolve</button></div><div id="alMsg"></div>'
+            : '<div style="margin-top:6px"><button class="mini" onclick="OPEN=\'al'+ei+'_'+ai+'\';render()">Mark resolved</button></div>')+'</div>';
+      }).join('');
+      return '<div class="ev"><div class="ev-h" style="'+KK.colour(ev.colour)+'">'+KK.esc(ev.event)+'<small>'+KK.esc(p.status)+(open?' · ⚠ '+open:'')+'</small></div>'+
+        '<div class="prog">'+pg('Opening', p.opening)+pg('Stop sale', p.stopSale, p.unlockAt ? 'from '+p.unlockAt : '')+pg('Stock take', p.stock)+pg('Closing', p.closing)+'</div>'+
+        (p.stopReason ? '<p class="hint" style="padding:0 16px">Stopped early: '+KK.esc(p.stopReason)+'</p>' : '')+
+        '<div class="lsec">Crew</div>'+(crew || '<p class="hint" style="padding:0 16px">No one rostered.</p>')+
+        (ev.alerts.length ? '<div class="lsec">Alerts</div>'+alerts : '')+'</div>';
+    }).join('');
+  }
+
+  function openFix(ei, ci){ OPEN = 'fix'+ei+'_'+ci; render(); }
+  function doFix(ei, ci){
+    var c = DATA.events[ei].crew[ci], t = document.getElementById('fixTime').value.trim(), why = document.getElementById('fixReason').value.trim();
+    KK.post('fixClockOut',{username:c.username, time:t, reason:why}).then(function(r){
+      if(!r.ok) return document.getElementById('fixMsg').innerHTML = '<div class="msg bad">'+KK.esc(r.error)+'</div>';
+      OPEN = null; load();
+    });
+  }
+  function doResolve(ei, ai){
+    var a = DATA.events[ei].alerts[ai], note = document.getElementById('alNote').value.trim();
+    KK.post('resolveAlert',{id:a.id, note:note}).then(function(r){
+      if(!r.ok) return document.getElementById('alMsg').innerHTML = '<div class="msg bad">'+KK.esc(r.error)+'</div>';
+      OPEN = null; load();
+    });
+  }
+  if(U){ load(); setInterval(function(){ if(!document.hidden && !OPEN) load(); }, 60000); }
+</script>
+</body>
+</html>

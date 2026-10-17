@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>My Payslips</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="kk.css">
+<style>
+  a.ps{display:flex;align-items:center;gap:12px;padding:14px 16px;border:1.5px solid var(--line);border-radius:16px;background:var(--card);text-decoration:none;color:inherit;margin-top:10px}
+  a.ps b{flex:1;font-size:16px}
+  a.ps small{display:block;color:var(--muted);font-weight:600;font-size:12.5px}
+  a.ps .amt{font-family:'Baloo 2',sans-serif;font-size:22px;font-weight:800}
+  .slip{background:#fff;border:1.5px solid var(--line);border-radius:18px;padding:18px;margin-top:12px}
+  .slip h2{font-size:20px;margin:0}
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:13.5px;margin:10px 0 6px}
+  .kv span{color:var(--muted);font-weight:600}
+  .kv b{text-align:right;font-weight:700}
+  .sec{font-size:11.5px;font-weight:900;color:var(--pink-d);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 2px}
+  .ln{display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid var(--line);font-size:14.5px;font-variant-numeric:tabular-nums}
+  .ln span{color:var(--ink)}
+  .ln.sum{font-weight:800;border-top:1.5px solid var(--ink)}
+  .ln.grand{font-size:18px;font-weight:900;border-top:2px solid var(--ink);margin-top:6px;padding-top:10px}
+  .tiny{font-size:12px;color:var(--muted);font-weight:600;margin-top:10px}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="back" href="me.html" id="back">‹</a>
+  <div style="flex:1"><h1>Payslips</h1><div class="sub">Published by the 7th of each month</div></div>
+</header>
+<main class="wrap"><div id="view"><div class="loading">Loading…</div></div></main>
+<script src="kk.js"></script>
+<script>
+  var U = KK.requireLogin(); if(U) KK.nav('me');
+  var D = null;
+  function money(n){ return '$'+(Number(n)||0).toFixed(2); }
+  function sum(a){ return a.reduce(function(s, x){ return s + (Number(x.amount)||0); }, 0); }
+  function route(){
+    var i = location.hash.slice(1);
+    document.getElementById('back').href = i !== '' ? 'payslips.html' : 'me.html';
+    if(i !== '' && D.payslips[+i]) return slip(D.payslips[+i]);
+    document.getElementById('view').innerHTML = D.payslips.length ? D.payslips.map(function(p, n){
+      return '<a class="ps" href="#'+n+'"><b>'+KK.esc(p.label)+'<small>Paid '+KK.esc(p.payDate)+(p.payType==='monthly'?'':' · '+p.hours+' hours')+'</small></b><span class="amt">'+money(p.total)+'</span></a>'; }).join('')
+      : '<div class="card"><p class="hint" style="margin:0">No payslips yet. They appear here once a month is published.</p></div>';
+  }
+  window.addEventListener('hashchange', route);
+  function slip(p){
+    var html = '<div class="slip"><h2>Payslip · '+KK.esc(p.label)+'</h2>'+
+      '<div class="kv"><span>Employer</span><b>'+KK.esc(D.company)+'</b><span>Employee</span><b>'+KK.esc(p.name)+'</b>'+
+      '<span>Pay period</span><b>'+KK.esc(p.label)+'</b><span>Date of payment</span><b>'+KK.esc(p.payDate)+'</b>'+
+      (p.payType==='monthly' ? '' : '<span>Hours worked</span><b>'+p.hours+'</b><span>Hourly rate</span><b>'+money(p.rate)+'</b>')+'</div>'+
+      '<div class="sec">Pay</div><div class="ln"><span>Basic pay'+(p.payType==='monthly'?' (monthly)':' ('+p.hours+'h × '+money(p.rate)+')')+'</span><b>'+money(p.basic)+'</b></div>'+
+      p.allowances.map(function(a){ return '<div class="ln"><span>'+KK.esc(a.label)+'</span><b>'+money(a.amount)+'</b></div>'; }).join('')+
+      '<div class="ln"><span>Overtime</span><b>$0.00</b></div>'+
+      '<div class="ln sum"><span>Gross pay</span><b>'+money(p.gross)+'</b></div>'+
+      '<div class="sec">Deductions</div>'+p.deductions.map(function(a){ return '<div class="ln"><span>'+KK.esc(a.label)+'</span><b>−'+money(a.amount)+'</b></div>'; }).join('')+
+      '<div class="ln"><span>CPF (employee)</span><b>−'+money(p.cpfEmployee)+'</b></div>'+
+      '<div class="ln sum"><span>Net pay</span><b>'+money(p.net)+'</b></div>'+
+      (p.claims.length ? '<div class="sec">Expense claims reimbursed</div>'+p.claims.map(function(c){ return '<div class="ln"><span>'+KK.esc(c.label)+'</span><b>'+money(c.amount)+'</b></div>'; }).join('') : '')+
+      '<div class="ln grand"><span>Total paid to you</span><b>'+money(p.total)+'</b></div>'+
+      '<p class="tiny">Employer CPF contribution: '+money(p.cpfEmployer)+'.'+(p.notes?' Note: '+KK.esc(p.notes):'')+'</p>'+
+      '<p class="tiny">Questions about this payslip? Ask Jay or Hazel.</p></div>';
+    document.getElementById('view').innerHTML = html; window.scrollTo({top:0});
+  }
+  if(U) KK.post('myPayslips').then(function(r){ D = r; route(); });
+</script>
+</body>
+</html>
