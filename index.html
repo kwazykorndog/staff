@@ -169,10 +169,11 @@
   }
 
   // ---- your next 7 days ----
-  function week(){
-    Promise.all([KK.post('myShifts'), KK.config()]).then(function(r){
-      var m = r[0], col = {}; if(!m.ok) return;
-      (r[1].events||[]).forEach(function(e){ col[e.name] = e.colour; });
+  function week(m){
+    if(!m || !m.ok) return;
+    KK.config().then(function(cfg){
+      var col = {};
+      (cfg.events||[]).forEach(function(e){ col[e.name] = e.colour; });
       var rows = '', d = new Date(); d.setHours(12);
       for(var i = 0; i < 7; i++){
         var day = d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);
@@ -189,9 +190,9 @@
   }
 
   // ---- managers/admins: who's on shift today, who's in charge, who's on standby ----
-  function live(){
-    if(!KK.isMgr(U)) return;
-    KK.post('live').then(function(r){
+  function live(r){
+    if(!KK.isMgr(U) || !r) return;
+    (function(){
       if(!r.ok) return;
       var html = '<div class="panel"><h2 style="justify-content:space-between">Live today <a href="live.html" style="font-size:13px;color:var(--pink-d);text-decoration:none">Open ›</a></h2>';
       if(!r.events.length) html += '<div class="calm">Nobody rostered or clocked in today.</div>';
@@ -207,7 +208,7 @@
       if(r.standby.length) html += '<div style="margin-top:10px;font-weight:800;font-size:13px">Backup (standby): <span style="font-weight:600;color:var(--muted)">'+
         r.standby.map(function(s){ return KK.esc(s.name)+(s.note?' ('+KK.esc(s.note)+')':''); }).join(', ')+'</span></div>';
       document.getElementById('liveBox').innerHTML = html + '<div style="height:10px"></div></div>';
-    });
+    })();
   }
 
   // ---- stop sale (confirmation built into the page) ----
@@ -232,20 +233,24 @@
     }).catch(function(){ b.disabled = false; m.innerHTML = '<div class="msg bad">Could not reach the server. Try again.</div>'; });
   }
 
+  // One request for the whole screen. The last copy shows straight away; the fresh one replaces it.
   function refresh(){
     if(!U) return;
-    KK.post('me').then(function(m){
-      if(!m.ok) throw new Error(m.error);
-      M = m; TODAY = m.today || []; KK.setCounts(m); live(); week();
-      ME = m.clockedIn; KK.clockIn(ME);
-      if(!ME){ S = null; render(); return; }
-      return KK.post('status',{event:ME.event}).then(function(res){
-        if(!res.ok){ document.getElementById('msg').innerHTML = '<div class="msg bad">'+KK.esc(res.error)+'</div>'; return; }
-        S = res; document.getElementById('msg').innerHTML = ''; render();
-      });
+    var role = document.getElementById('role');
+    role.dataset.base = role.dataset.base || role.textContent;
+    role.textContent = role.dataset.base + ' · updating…';
+    KK.cached('home', {}, function(h){
+      M = h.me; TODAY = M.today || []; KK.setCounts(M);
+      ME = M.clockedIn; KK.clockIn(ME);
+      S = h.status && h.status.ok ? h.status : null;
+      document.getElementById('msg').innerHTML = '';
+      render(); live(h.live); week(h.week);
+    }).then(function(r){
+      role.textContent = role.dataset.base;
+      if(r && !r.ok) document.getElementById('msg').innerHTML = '<div class="msg bad">'+KK.esc(r.error)+'</div>';
     }).catch(function(){
-      document.getElementById('msg').innerHTML = '<div class="msg bad">Could not reach the server. Check your signal and pull down to refresh.</div>';
-      render();
+      role.textContent = role.dataset.base;
+      document.getElementById('msg').innerHTML = '<div class="msg bad">Could not reach the server. Check your signal; it will try again in a minute.</div>';
     });
   }
   if(U){ render(); refresh(); setInterval(function(){ if(!document.hidden && !document.getElementById('stopPanel').innerHTML) refresh(); }, 60000); }

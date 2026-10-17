@@ -30,21 +30,46 @@ var KK = (function(){
     return demoReady;
   }
 
+  // Settings/checklist/events: answer instantly from this phone's copy (same day), and refresh it in the background.
   var cfg = null;
   function config(){
     if(cfg) return cfg;
-    cfg = DEMO ? demo().then(function(d){ return d.config(); })
-               : fetch(api+'?action=config').then(function(r){ return r.json(); });
-    cfg = cfg.then(function(res){ if(!res.ok) throw new Error(res.error||'Could not load'); return res; });
-    cfg.catch(function(){ cfg = null; });   // allow a retry after a network hiccup
+    var fresh = (DEMO ? demo().then(function(d){ return d.config(); }) : fetch(api+'?action=config').then(function(r){ return r.json(); }))
+      .then(function(res){
+        if(!res.ok) throw new Error(res.error||'Could not load');
+        try{ localStorage.setItem('kk_cfg', JSON.stringify({day:ymd(), data:res})); }catch(e){}
+        return res;
+      });
+    var hit = null; try{ hit = JSON.parse(localStorage.getItem('kk_cfg')||'null'); }catch(e){}
+    if(hit && hit.day === ymd() && hit.data){ fresh.catch(function(){}); return (cfg = Promise.resolve(hit.data)); }
+    cfg = fresh; cfg.catch(function(){ cfg = null; });   // allow a retry after a network hiccup
     return cfg;
+  }
+
+  var READS = ['login','me','home','myShifts','status','live','rosterWeek','users','events','audit','notices','noticeAcks','handbook','claims','claimsAll',
+               'stockItems','stockOverview','templates','hoursList','payrollList','myPayslips','cashList','myCash','salesSummary'];
+  function forget(){ try{ Object.keys(localStorage).forEach(function(k){ if(k.indexOf('kk_c_') === 0) localStorage.removeItem(k); }); sessionStorage.removeItem('kk_counts'); }catch(e){} }
+
+  // Show the last answer straight away (if it's from today and this user), then call again and show the fresh one.
+  function cached(action, data, onData){
+    var u = user(), key = 'kk_c_'+action+'_'+JSON.stringify(data||{}), hit = null;
+    try{ hit = JSON.parse(localStorage.getItem(key)||'null'); }catch(e){}
+    if(hit && u && hit.user === u.username && hit.day === ymd()) onData(hit.data, true);
+    return post(action, data).then(function(r){
+      if(r && r.ok){ try{ localStorage.setItem(key, JSON.stringify({user:u && u.username, day:ymd(), data:r})); }catch(e){} onData(r, false); }
+      return r;
+    });
   }
 
   // ---- session ----
   function session(){ try{ return JSON.parse(mem('session')||'null'); }catch(e){ return null; } }
   function setSession(token, user){ mem('session', JSON.stringify({token:token, user:user})); }
   function user(){ var s = session(); return s ? s.user : null; }
-  function logout(){ mem('session', null); mem('clockin', null); location.href = 'login.html'; }
+  function logout(){
+    mem('session', null); mem('clockin', null);
+    try{ Object.keys(localStorage).forEach(function(k){ if(k.indexOf('kk_c_') === 0) localStorage.removeItem(k); }); sessionStorage.clear(); }catch(e){}
+    location.href = 'login.html';
+  }
   // Call at the top of each page. Sends people to the login page if needed; returns the user.
   function requireLogin(roles){
     var u = user();
@@ -59,6 +84,8 @@ var KK = (function(){
     var p = DEMO ? demo().then(function(d){ return d.post(body); })
                  : fetch(api,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)}).then(function(r){ return r.json(); });
     return p.then(function(res){
+      // Something was saved: forget remembered screens so the next one shows fresh data
+      if(res && res.ok && READS.indexOf(action) < 0) forget();
       if(res && res.auth && action !== 'login'){ logout(); }
       else if(res && res.mustChange){ location.href = 'login.html?change=1'; }
       if(res && res.token && res.user) setSession(res.token, res.user);
@@ -81,7 +108,7 @@ var KK = (function(){
 
   // Shrink a camera photo on the phone before upload. Resolves to a JPEG data URL (default ~1280px, about 200 KB).
   function shrink(file, max, q){
-    max = max || 1280;
+    max = max || 1024;
     return new Promise(function(ok, fail){
       var img = new Image(), url = typeof file==='string' ? file : URL.createObjectURL(file);
       img.onload = function(){
@@ -90,7 +117,7 @@ var KK = (function(){
         cv.width = Math.round(img.width*k); cv.height = Math.round(img.height*k);
         cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
         if(typeof file!=='string') URL.revokeObjectURL(url);
-        ok(cv.toDataURL('image/jpeg', q || 0.72));
+        ok(cv.toDataURL('image/jpeg', q || 0.7));
       };
       img.onerror = function(){ fail(new Error('bad image')); };
       img.src = url;
@@ -146,7 +173,7 @@ var KK = (function(){
   }
   // Badge counts, cached for a minute so moving between tabs stays quick.
   function counts(fresh){
-    try{ var c = JSON.parse(sessionStorage.getItem('kk_counts')||'null'); if(c && !fresh && Date.now() - c.t < 60000) return Promise.resolve(c); }catch(e){}
+    try{ var c = JSON.parse(sessionStorage.getItem('kk_counts')||'null'); if(c && !fresh && Date.now() - c.t < 300000) return Promise.resolve(c); }catch(e){}
     return post('me').then(function(m){ return m.ok ? setCounts(m) : {}; }, function(){ return {}; });
   }
   function setCounts(m){
@@ -159,7 +186,7 @@ var KK = (function(){
     ['notices','learn','manage','me'].forEach(function(k){ var el = document.getElementById('nb_'+k); if(el){ el.textContent = c[k] > 9 ? '9+' : (c[k] || ''); el.style.display = c[k] ? 'flex' : 'none'; } });
   }
 
-  return { DEMO:DEMO, isMgr:isMgr, rich:rich, nav:nav, counts:counts, setCounts:setCounts, esc:esc, mem:mem, money:money, config:config, post:post, hhmm:hhmm, ymd:ymd,
+  return { DEMO:DEMO, isMgr:isMgr, rich:rich, nav:nav, cached:cached, counts:counts, setCounts:setCounts, esc:esc, mem:mem, money:money, config:config, post:post, hhmm:hhmm, ymd:ymd,
            today:today, shrink:shrink, clockIn:clockIn, user:user, logout:logout, requireLogin:requireLogin,
            setSession:setSession, colour:colour, COLOURS:COLOURS };
 })();

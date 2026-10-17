@@ -310,12 +310,17 @@ const MGR_ACTIONS = ['rosterWeek', 'rosterSave', 'rosterDelete', 'rosterCopyWeek
                      'live', 'fixClockOut', 'resolveAlert', 'stockOverview', 'stockLevelsSave', 'templates', 'templateSave', 'openingStock', 'noticeSave', 'noticeAcks', 'handbookSave', 'claimsAll', 'claimDecide', 'claimPaid'];
 function isMgr(u) { return u.role === 'admin' || u.role === 'manager'; }
 
+// Actions that only read. They skip the lock so several can run at once (the lock is only for saving).
+const READ_ACTIONS = ['login', 'me', 'home', 'myShifts', 'status', 'live', 'rosterWeek', 'users', 'events', 'audit', 'notices', 'noticeAcks',
+                      'handbook', 'claims', 'claimsAll', 'stockItems', 'stockOverview', 'templates', 'hoursList', 'payrollList', 'myPayslips',
+                      'cashList', 'myCash', 'salesSummary'];
+
 function doPost(e) {
   let d;
   try { d = JSON.parse(e.postData.contents); } catch (err) { return json({ ok: false, error: 'Bad request' }); }
 
-  const lock = LockService.getScriptLock();
-  try { lock.waitLock(25000); } catch (err) { return json({ ok: false, error: 'Busy, please tap again.' }); }
+  const lock = READ_ACTIONS.indexOf(d.action) >= 0 ? null : LockService.getScriptLock();
+  if (lock) { try { lock.waitLock(25000); } catch (err) { return json({ ok: false, error: 'Busy, please tap again.' }); } }
   try {
     if (d.action === 'login') return json(login(d));
     const a = auth(d.token);
@@ -327,6 +332,7 @@ function doPost(e) {
     const event = clean(d.event);
     switch (d.action) {
       case 'me':             return json(meInfo(u));
+      case 'home':           return json(home(u));
       case 'myShifts':       return json(myShifts(u));
       case 'clock':          return json(clock(u, d));
       case 'status':         return json(status(u, event));
@@ -390,11 +396,23 @@ function doPost(e) {
   } catch (err) {
     return json({ ok: false, error: String((err && err.message) || err) });
   } finally {
-    lock.releaseLock();
+    if (lock) lock.releaseLock();
   }
 }
 
+// Settings, events, checklist and stock items change rarely, so they're kept in the script cache for 10 minutes
+// (edits made straight in the Sheet show up within 10 minutes; edits made in the app clear it at once).
 function getConfig() {
+  const cache = CacheService.getScriptCache(), key = 'cfg_' + fmt(new Date(), 'yyyy-MM-dd');
+  const hit = cache.get(key);
+  if (hit) { try { return JSON.parse(hit); } catch (err) { /* rebuild */ } }
+  const c = buildConfig();
+  try { cache.put(key, JSON.stringify(c), 600); } catch (err) { /* too big to cache: fine */ }
+  return c;
+}
+function clearConfig() { CacheService.getScriptCache().remove('cfg_' + fmt(new Date(), 'yyyy-MM-dd')); }
+
+function buildConfig() {
   const s = settingsMap();
   delete s['Report email to'];                                       // not for the public page
   return { ok: true, events: eventsList(true), checklist: checklistRows(), stock: stockRows(), settings: s, prompt: todayPrompt(true) };
@@ -577,6 +595,7 @@ function eventSave(actor, d) {
     if (tpl.length) { setEventLevels(name, tpl); obj['Stock template'] = d.template; }
   }
   logRow('events', obj, found && !d.isNew ? found.row : undefined);
+  clearConfig(); clearRestock();
   audit(actor, d.isNew ? 'Added event' : 'Edited event', name + ' ' + start + '–' + end);
   return { ok: true };
 }
@@ -664,11 +683,17 @@ function meInfo(u) {
   const today = rosterRows(day).filter(function (r) { return r.staff === u.username; })
     .map(function (r) { return { event: r.event, start: hm(r.start), end: hm(r.end), type: r.type, note: r.note }; });
   return { ok: true, user: pub(u), today: today, unreadNotices: noticesList(u).unread, handbookToRead: handbookList(u).toRead,
-           pendingClaims: isMgr(u) ? claimsAll(u).pending : 0, restock: isMgr(u) ? stockOverview().events.filter(function (e) { return e.needCount; }).length : 0,
+           pendingClaims: isMgr(u) ? claimsAll(u).pending : 0, restock: isMgr(u) ? restockCount() : 0,
            cash: isMgr(u) ? (function () { const c = cashList(); return { notBanked: c.notBanked, toReceive: c.toReceive, overdue: c.overdue, toVerify: c.toVerify, toCheck: c.toCheck, queries: c.queries }; })() : null,
            myCash: (function () { const c = myCash(u); return { holding: c.holding, due: c.due, overdue: c.overdue, pending: c.pending,
                      count: c.bags.filter(function (b) { return b.status === 'with closer'; }).length, queries: c.queries.filter(function (q) { return !q.reply; }).length }; })(),
            clockedIn: o && fmt(o.r['Clock in'], 'yyyy-MM-dd') === day ? { event: String(o.r.Event), time: fmt(o.r['Clock in'], 'HH:mm') } : null };
+}
+
+// Everything the Today screen needs, in one round trip.
+function home(u) {
+  const me = meInfo(u);
+  return { ok: true, me: me, status: me.clockedIn ? status(u, me.clockedIn.event) : null, live: isMgr(u) ? live(u) : null, week: myShifts(u) };
 }
 
 function myShifts(u) {
@@ -773,6 +798,47 @@ function openShift(name) {
   }
   return null;
 }
+// Clock-in time if this person is clocked in today at this event, else null.
+function clockedIn(name, event) {
+  const o = openShift(name);
+  return o && String(o.r.Event) === event && fmt(o.r['Clock in'], 'yyyy-MM-dd') === fmt(new Date(), 'yyyy-MM-dd') ? o.r['Clock in'] : null;
+}
+function onSite(event, day) {
+  return readRows('timesheet').filter(function (r) {
+    return String(r.Event) === event && r['Clock in'] && !r['Clock out'] && fmt(r['Clock in'], 'yyyy-MM-dd') === day;
+  }).map(function (r) { return r.Staff; });
+}
+
+// One prompt per day, picked at random by the server (never the same as yesterday) and logged in Prompt Log.
+function todayPrompt(useLock) {
+  const day = fmt(new Date(), 'yyyy-MM-dd'), found = promptFor(day);
+  if (found) return found;
+  const lock = useLock ? LockService.getScriptLock() : null;
+  if (lock) lock.waitLock(20000);
+  try {
+    const again = promptFor(day);                    // someone else may have just picked it
+    if (again) return again;
+    const sh = sheet('promptLog'), last = sh.getLastRow() > 1 ? sh.getRange(sh.getLastRow(), 1, 1, 4).getValues()[0] : null;
+    let pool = readRows('prompts').filter(function (r) { return r.Prompt && isActive(r.Active); });
+    if (!pool.length) pool = [{ Category: 'Other', Prompt: 'Selfie with the booth behind you', Emoji: '🤳' }];
+    const fresh = pool.filter(function (r) { return !last || String(r.Prompt) !== String(last[2]); });
+    const from = fresh.length ? fresh : pool;
+    const pick = from[Math.floor(Math.random() * from.length)];
+    const p = { category: String(pick.Category || ''), prompt: String(pick.Prompt), emoji: String(pick.Emoji || '📸') };
+    sh.appendRow([day, p.category, p.prompt, p.emoji]);
+    _cache.promptLog = null;
+    return p;
+  } finally {
+    if (lock) lock.releaseLock();
+  }
+}
+function promptFor(day) {
+  const sh = sheet('promptLog');
+  if (sh.getLastRow() < 2) return null;
+  const last = sh.getRange(sh.getLastRow(), 1, 1, 4).getValues()[0];
+  return dstr(last[0]) === day ? { category: String(last[1]), prompt: String(last[2]), emoji: String(last[3] || '📸') } : null;
+}
+
 // Clock-in time if this person is clocked in today at this event, else null.
 function clockedIn(name, event) {
   const o = openShift(name);
@@ -1477,6 +1543,7 @@ function stockLevelsSave(u, d) {
   if (c.error) return { ok: false, error: c.error };
   setEventLevels(event, c.rows);
   if (d.template) logRow('events', { 'Stock template': clean(d.template) }, findEvent(event).row);
+  clearRestock();
   audit(u, 'Set stock levels', event + (d.template ? ' (from ' + d.template + ')' : ''));
   return { ok: true };
 }
@@ -1514,6 +1581,7 @@ function openingStock(u, d) {
   const sh = sheet('stockLog');
   sh.getRange(sh.getLastRow() + 1, 1, out.length, out[0].length).setValues(out);
   _cache.stockLog = null;
+  clearRestock();
   audit(u, 'Entered opening stock', event + ' (' + out.length + ' items)');
   return { ok: true, saved: out.length };
 }
@@ -1539,6 +1607,15 @@ function stockOverview() {
              needCount: items.filter(function (i) { return i.need > 0; }).length, counted: !!last };
   }) };
 }
+
+function restockCount() {
+  const cache = CacheService.getScriptCache(), hit = cache.get('restock');
+  if (hit !== null) return Number(hit);
+  const n = stockOverview().events.filter(function (e) { return e.needCount; }).length;
+  cache.put('restock', String(n), 300);
+  return n;
+}
+function clearRestock() { CacheService.getScriptCache().remove('restock'); }
 
 // Deletes rows matching fn (bottom-up so row numbers stay right).
 function deleteWhere(key, fn) {
@@ -1592,6 +1669,7 @@ function saveChecklist(name, event, d, mgr) {
     if (out.length) { sh.getRange(sh.getLastRow() + 1, 1, out.length, out[0].length).setValues(out); _cache.stockLog = null; }
     low = r.stock.filter(function (s) { return s.low; }).map(function (s) { return s.item + ' (' + s.category.replace(/ \(.*\)/, '') + ') ' + s.count + '/' + s.min; });
     logRow('dayLog', { 'Stock take done': t, 'Stock take by': name }, dl.row);
+    clearRestock();
   } else {
     const mins = minOfDay(now) - tmin(dl.r['Stop sale']);
     logRow('closeLog', Object.assign({ 'Timestamp': now, 'Date': day, 'Event': event, 'Staff': name,

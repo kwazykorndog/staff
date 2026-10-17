@@ -80,10 +80,9 @@
     KK.nav('me');
     document.getElementById('sub').textContent = U.name + ' · ' + U.username;
     loadCash();
-    Promise.all([KK.post('myShifts'), KK.config()]).then(function(r){
-      var m = r[0], colour = {};
-      (r[1].events||[]).forEach(function(e){ colour[e.name] = e.colour; });
-      if(!m.ok) throw new Error(m.error);
+    KK.config().then(function(cfg){ KK.cached('myShifts', {}, function(m){
+      var colour = {};
+      (cfg.events||[]).forEach(function(e){ colour[e.name] = e.colour; });
       document.getElementById('hours').textContent = m.monthHours;
       document.getElementById('month').textContent = new Date(m.month+'-15').toLocaleDateString('en-SG',{month:'long'});
       var html = '', last = '';
@@ -101,7 +100,7 @@
         : '<tr><td class="hint">Nothing yet.</td></tr>';
       document.getElementById('load').style.display='none';
       document.getElementById('body').style.display='block';
-    }).catch(function(){ document.getElementById('load').innerHTML = 'Could not load. <a href="">Try again</a>.'; });
+    }); }).catch(function(){ document.getElementById('load').innerHTML = 'Could not load. <a href="">Try again</a>.'; });
 
     document.getElementById('pwForm').onsubmit = function(e){
       e.preventDefault();
@@ -116,7 +115,7 @@
 
   // ---- cash on hand ----
   var CASH = null, DEP = null;
-  function loadCash(){ KK.post('myCash').then(function(r){ CASH = r; renderCash(); KK.counts(true); }); }
+  function loadCash(){ KK.cached('myCash', {}, function(r){ CASH = r; if(!DEP) renderCash(); }); }
   function dname(d){ return new Date(d+'T12:00').toLocaleDateString('en-SG',{weekday:'short', day:'numeric', month:'short'}); }
   function renderCash(){
     var el = document.getElementById('cash'), c = CASH;

@@ -38,14 +38,14 @@
   var DATA = null, EVENTS = [], FORM = null, PHOTO = '';
 
   function load(){
-    Promise.all([KK.post('notices'), KK.config()]).then(function(r){
-      DATA = r[0]; EVENTS = r[1].events || [];
-      if(!DATA.ok) return document.getElementById('list').innerHTML = '<div class="msg bad">'+KK.esc(DATA.error)+'</div>';
-      render();
+    KK.config().then(function(c){ EVENTS = c.events || []; });
+    KK.cached('notices', {}, function(r, fromCache){
+      DATA = r; if(!FORM) render();
+      if(fromCache) return;
       // Reading the page counts as seeing ordinary notices; "must acknowledge" ones need a tap.
       var seen = DATA.notices.filter(function(n){ return !n.acked && !n.mustAck && !n.expired; }).map(function(n){ return n.id; });
       if(seen.length) KK.post('noticeAck', {ids: seen});
-    });
+    }).then(function(r){ if(r && !r.ok) document.getElementById('list').innerHTML = '<div class="msg bad">'+KK.esc(r.error)+'</div>'; });
   }
 
   function render(){

@@ -58,7 +58,10 @@
   var U = KK.requireLogin(); if(U) KK.nav('learn');
   var D = null, FORM = null;
 
-  function load(then){ KK.post('handbook').then(function(r){ D = r; if(then) then(); else route(); }); }
+  function load(then){
+    if(then) return KK.post('handbook').then(function(r){ D = r; then(); });
+    KK.cached('handbook', {}, function(r){ D = r; if(!FORM) route(); });
+  }
   function route(){
     var id = location.hash.slice(1), want = new URLSearchParams(location.search).get('title');
     if(want && !id){ var m = D.sections.filter(function(s){ return s.title.toLowerCase() === want.toLowerCase(); })[0]; if(m){ history.replaceState(null,'','handbook.html#'+m.id); id = m.id; } }
