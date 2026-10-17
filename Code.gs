@@ -67,12 +67,13 @@ const TABS = {
               // Status: with closer → received (manager has it) → banked, or with closer → deposited (crew banked/transferred) → banked once a manager verifies
   claims:    ['ID', 'Submitted', 'Username', 'Date', 'Amount', 'Category', 'Where', 'Description', 'Receipt', 'Status',
               'Decided by', 'Decided at', 'Reason', 'Paid note'],
+  reports:   ['ID', 'Date', 'Event', 'Subject', 'Alerts', 'Html', 'Created'],     // each day's event report, readable under Manage → Reports
 };
 const NAMES = {
   users: 'Users', events: 'Events', roster: 'Roster', checklist: 'Checklist', stock: 'Stock Items', settings: 'Settings',
   prompts: 'Prompts', promptLog: 'Prompt Log', timesheet: 'Timesheet', dayLog: 'Day Log', alerts: 'Alerts',
   openLog: 'Opening Log', closeLog: 'Closing Log', stockLog: 'Stock Count Log', photoLog: 'Photo Log', audit: 'Audit',
-  stockTpl: 'Stock Templates', eventStock: 'Event Stock Levels', notices: 'Notices', noticeAcks: 'Notice Acks', handbook: 'Handbook', bookAcks: 'Handbook Acks', claims: 'Expense Claims', payslips: 'Payslips', cash: 'Cash Bags',
+  stockTpl: 'Stock Templates', eventStock: 'Event Stock Levels', notices: 'Notices', noticeAcks: 'Notice Acks', handbook: 'Handbook', bookAcks: 'Handbook Acks', claims: 'Expense Claims', payslips: 'Payslips', cash: 'Cash Bags', reports: 'Reports',
 };
 const TEXT_TABS = ['users', 'events', 'roster', 'dayLog', 'promptLog', 'notices', 'handbook', 'claims', 'payslips'];   // stored as plain text so dates/times aren't converted
 
@@ -307,13 +308,13 @@ function doGet(e) {
 // Actions for managers and admins. Finer limits for managers are inside each function.
 const MGR_ACTIONS = ['rosterWeek', 'rosterSave', 'rosterDelete', 'rosterCopyWeek', 'users', 'userSave', 'userReset', 'events', 'eventSave', 'audit',
                      'hoursList', 'fixShift', 'payrollList', 'payslipSave', 'payrollPublish', 'cashList', 'cashReceive', 'cashBank', 'cashVerify', 'cashSalesCheck', 'cashResolve', 'salesSummary',
-                     'live', 'fixClockOut', 'resolveAlert', 'stockOverview', 'stockLevelsSave', 'templates', 'templateSave', 'openingStock', 'noticeSave', 'noticeAcks', 'handbookSave', 'claimsAll', 'claimDecide', 'claimPaid'];
+                     'live', 'fixClockOut', 'resolveAlert', 'reports', 'report', 'stockOverview', 'stockLevelsSave', 'templates', 'templateSave', 'openingStock', 'noticeSave', 'noticeAcks', 'handbookSave', 'claimsAll', 'claimDecide', 'claimPaid'];
 function isMgr(u) { return u.role === 'admin' || u.role === 'manager'; }
 
 // Actions that only read. They skip the lock so several can run at once (the lock is only for saving).
 const READ_ACTIONS = ['login', 'me', 'home', 'myShifts', 'status', 'live', 'rosterWeek', 'users', 'events', 'audit', 'notices', 'noticeAcks',
                       'handbook', 'claims', 'claimsAll', 'stockItems', 'stockOverview', 'templates', 'hoursList', 'payrollList', 'myPayslips',
-                      'cashList', 'myCash', 'salesSummary'];
+                      'cashList', 'myCash', 'salesSummary', 'reports', 'report'];
 
 function doPost(e) {
   let d;
@@ -384,6 +385,8 @@ function doPost(e) {
       case 'myCash':         return json(myCash(u));
       case 'cashDeposit':    return json(cashDeposit(u, d));
       case 'salesSummary':   return json(salesSummary(d));
+      case 'reports':        return json(reportsList());
+      case 'report':         return json(reportOne(d));
     }
     // Everything below needs the person to be clocked in at that event today.
     if (!clockedIn(u.username, event)) return json({ ok: false, error: 'You are not clocked in at ' + event + ' today. Clock in first.' });
@@ -1859,13 +1862,27 @@ function sendReport(event, day) {
   }
   html += '</div>';
 
-  MailApp.sendEmail({
-    to: reportTo(),
-    subject: (alerts.length ? '⚠ ' : '✅ ') + event + ' · ' + fmt(new Date(day + 'T12:00:00'), 'd MMM') + ' · ' +
-             (r['Closing done'] ? 'closed' : 'NOT closed') + (alerts.length ? ' · ' + alerts.length + ' alert' + (alerts.length > 1 ? 's' : '') : ''),
-    htmlBody: html,
-  });
+  const subject = (alerts.length ? '⚠ ' : '✅ ') + event + ' · ' + fmt(new Date(day + 'T12:00:00'), 'd MMM') + ' · ' +
+                  (r['Closing done'] ? 'closed' : 'NOT closed') + (alerts.length ? ' · ' + alerts.length + ' alert' + (alerts.length > 1 ? 's' : '') : '');
+  logRow('reports', { 'ID': Utilities.getUuid().slice(0, 8), 'Date': day, 'Event': event, 'Subject': subject, 'Alerts': alerts.length, 'Html': html,
+                      'Created': fmt(new Date(), 'yyyy-MM-dd HH:mm') });
+  try { MailApp.sendEmail({ to: reportTo(), subject: subject, htmlBody: html }); } catch (err) { /* the report is still kept under Manage → Reports */ }
   logRow('dayLog', { 'Report sent': fmt(new Date(), 'yyyy-MM-dd HH:mm') }, dl.row);
+}
+
+// Manage → Reports: the last 90 days of event reports, newest first.
+function reportsList() {
+  const from = addDays(fmt(new Date(), 'yyyy-MM-dd'), -90);
+  const out = readRows('reports').filter(function (r) { return dstr(r.Date) >= from; }).map(function (r) {
+    return { id: String(r.ID), date: dstr(r.Date), event: String(r.Event), subject: String(r.Subject), alerts: Number(r.Alerts) || 0, created: String(r.Created) };
+  });
+  out.sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : (a.created < b.created ? 1 : -1); });
+  return { ok: true, reports: out };
+}
+function reportOne(d) {
+  const f = findRow('reports', 'ID', d.id);
+  if (!f) return { ok: false, error: 'Report not found.' };
+  return { ok: true, report: { id: String(f.r.ID), date: dstr(f.r.Date), event: String(f.r.Event), subject: String(f.r.Subject), html: String(f.r.Html) } };
 }
 
 function lastRow(key, event, day) {

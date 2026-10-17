@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Reports</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="kk.css">
+<style>
+  .wrap{max-width:760px}
+  .rep{display:block;width:100%;text-align:left;font:inherit;background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:12px 14px;margin-top:8px;color:inherit}
+  .rep b{display:block;font-size:15px}
+  .rep small{color:var(--muted);font-weight:600}
+  .rep.alert{border-color:#f0c36b}
+  .body{background:#fff;border:1.5px solid var(--line);border-radius:16px;padding:14px;margin-top:8px;overflow-x:auto}
+  .body img{max-width:100%}
+  .day{font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:18px}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="back" href="admin.html">‹</a>
+  <div style="flex:1"><h1>Reports</h1><div class="sub">Each event's day report, made when the last person clocks out (or at 3am)</div></div>
+</header>
+<main class="wrap">
+  <div id="view"><div class="loading">Loading…</div></div>
+</main>
+<script src="kk.js"></script>
+<script>
+  var U = KK.requireLogin(['admin','manager']); if(U) KK.nav('manage');
+  var OPEN = '';
+  function when(d){ return new Date(d+'T12:00').toLocaleDateString('en-SG',{weekday:'short', day:'numeric', month:'short'}); }
+  function render(r){
+    if(!r.ok) return document.getElementById('view').innerHTML = '<div class="msg bad">'+KK.esc(r.error||'Could not load.')+'</div>';
+    if(!r.reports.length) return document.getElementById('view').innerHTML = '<div class="card"><p class="hint" style="margin:0">No reports yet. One appears after each event day closes.</p></div>';
+    var last = '', html = '';
+    r.reports.forEach(function(x){
+      if(x.date !== last){ last = x.date; html += '<div class="day">'+when(x.date)+'</div>'; }
+      html += '<button class="rep'+(x.alerts?' alert':'')+'" onclick="toggle(\''+KK.esc(x.id)+'\')"><b>'+KK.esc(x.subject)+'</b><small>Made '+KK.esc(x.created)+'</small></button>'+
+              '<div id="r_'+KK.esc(x.id)+'"></div>';
+    });
+    document.getElementById('view').innerHTML = html;
+  }
+  function toggle(id){
+    var box = document.getElementById('r_'+id);
+    if(OPEN === id){ box.innerHTML = ''; OPEN = ''; return; }
+    if(OPEN){ var o = document.getElementById('r_'+OPEN); if(o) o.innerHTML = ''; }
+    OPEN = id; box.innerHTML = '<div class="loading">Loading…</div>';
+    KK.post('report', {id:id}).then(function(r){
+      if(OPEN !== id) return;
+      box.innerHTML = r.ok ? '<div class="body">'+r.report.html+'</div>' : '<div class="msg bad">'+KK.esc(r.error||'Could not load.')+'</div>';
+    });
+  }
+  if(U) KK.cached('reports', {}, render);
+</script>
+</body>
+</html>

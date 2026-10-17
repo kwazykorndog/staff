@@ -1,9 +1,9 @@
 // =====================================================================
 //  Kwazy Korndog staff app — shared settings & helpers
 // =====================================================================
-//  Paste your Google Apps Script web-app URL below (it ends in /exec).
+//  The app's server (Cloudflare; see the cloudflare/ folder).
 //  While it's blank, the app runs in DEMO MODE: the real backend runs in your browser with sample data.
-var KK_API = 'https://script.google.com/macros/s/AKfycbxSMgWw_XTc2uMbmJ7Yo0AvxB8FUXjxa5g2AYRWRUfKXREIlBPzMuKZjSQZHQu2aym3RQ/exec';
+var KK_API = 'https://kk-staff.kk-staff-server.workers.dev';
 // =====================================================================
 
 var KK = (function(){
@@ -47,7 +47,7 @@ var KK = (function(){
   }
 
   var READS = ['login','me','home','myShifts','status','live','rosterWeek','users','events','audit','notices','noticeAcks','handbook','claims','claimsAll',
-               'stockItems','stockOverview','templates','hoursList','payrollList','myPayslips','cashList','myCash','salesSummary'];
+               'stockItems','stockOverview','templates','hoursList','payrollList','myPayslips','cashList','myCash','salesSummary','reports','report'];
   function forget(){ try{ Object.keys(localStorage).forEach(function(k){ if(k.indexOf('kk_c_') === 0) localStorage.removeItem(k); }); sessionStorage.removeItem('kk_counts'); }catch(e){} }
 
   // Show the last answer straight away (if it's from today and this user), then call again and show the fresh one.
